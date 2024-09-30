@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dual MP3 Loop Players with Microphone Input and WAV Recording</title>
+    <style>
+        .player, .microphone, .recorder {
+            margin-bottom: 20px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        button {
+            font-size: 16px;
+            margin: 5px;
+            padding: 10px 20px;
+        }
+        .audioControls {
+            margin-top: 10px;
+        }
+        #volumeMeter {
+            width: 300px;
+            height: 20px;
+            background-color: #ddd;
+        }
+        #volumeBar {
+            height: 100%;
+            width: 0%;
+            background-color: #4CAF50;
+        }
+    </style>
+</head>
+<body>
+    <div class="player">
+        <h2>Audio Player 1</h2>
+        <audio id="audioPlayer1" loop>
+            <source src="test3.mp3" type="audio/mpeg">
+            Your browser does not support the audio element.
+        </audio>
+
+        <div class="audioControls">
+            <button id="playButton1">Play</button>
+            <button id="pauseButton1">Pause</button>
+            <button id="stopButton1">Stop</button>
+        </div>
+    </div>
+
+    <div class="recorder">
+        <h2>Audio Recorder (WAV)</h2>
+        <button id="startRecordButton">Start Recording</button>
+        <button id="stopRecordButton">Stop Recording</button>
+        <div id="downloadLink"></div>
+    </div>
+
+    <script>
+       
+        function setupAudioPlayer(playerId, playButtonId, pauseButtonId, stopButtonId) {
+            const audioPlayer = document.getElementById(playerId);
+            const playButton = document.getElementById(playButtonId);
+            const pauseButton = document.getElementById(pauseButtonId);
+            const stopButton = document.getElementById(stopButtonId);
+
+            playButton.addEventListener('click', () => {
+                audioPlayer.play();
+            });
+
+            pauseButton.addEventListener('click', () => {
+                audioPlayer.pause();
+            });
+
+            stopButton.addEventListener('click', () => {
+                audioPlayer.pause();
+                audioPlayer.currentTime = 0;
+            });
+        }
+
+        // Setup audio players
+        setupAudioPlayer('audioPlayer1', 'playButton1', 'pauseButton1', 'stopButton1');
+
+        // Audio Recording
+        let mediaRecorder;
+        let audioChunks = [];
+        const startRecordButton = document.getElementById('startRecordButton');
+        const stopRecordButton = document.getElementById('stopRecordButton');
+        const downloadLink = document.getElementById('downloadLink');
+
+        startRecordButton.addEventListener('click', startRecording);
+        stopRecordButton.addEventListener('click', stopRecording);
+
+        async function startRecording() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: {
+                  deviceId: undefined,
+                  echoCancellation: true,
+                  noiseSuppression: true,
+                  autoGainControl: true
+                } });
+
+                mediaRecorder = new MediaRecorder(stream);
+
+                mediaRecorder.ondataavailable = (event) => {
+                    audioChunks.push(event.data);
+                };
+
+                mediaRecorder.onstop = () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/mp3' });
+                    const audioUrl = URL.createObjectURL(audioBlob);
+
+                    const link = document.createElement('a');
+                    link.href = audioUrl;
+                    link.download = 'recorded_audio.wav';
+                    link.innerHTML = 'Download WAV';
+                    downloadLink.innerHTML = '';
+                    downloadLink.appendChild(link);
+
+                    audioChunks = [];
+                };
+
+                mediaRecorder.start();
+                startRecordButton.disabled = true;
+                stopRecordButton.disabled = false;
+            } catch (error) {
+                console.error('Error starting recording:', error);
+            }
+        }
+
+        function stopRecording() {
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
+                startRecordButton.disabled = false;
+                stopRecordButton.disabled = true;
+            }
+        }
+    </script>
+</body>
+</html>
