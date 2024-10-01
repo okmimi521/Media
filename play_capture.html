@@ -94,7 +94,10 @@
                   deviceId: undefined,
                   echoCancellation: true,
                   noiseSuppression: true,
-                  autoGainControl: true
+                  autoGainControl: true,
+                  latency: 0,
+                  channelCount: 2,
+                  sampleRate: 48000
                 } });
 
                 mediaRecorder = new MediaRecorder(stream);
@@ -104,7 +107,7 @@
                 };
 
                 mediaRecorder.onstop = () => {
-                    const audioBlob = new Blob(audioChunks, { type: 'audio/mp3' });
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
                     const audioUrl = URL.createObjectURL(audioBlob);
 
                     const link = document.createElement('a');
