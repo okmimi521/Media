@@ -92,7 +92,7 @@
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: {
                   deviceId: undefined,
-                  echoCancellation: false,
+                  echoCancellation: true,
                   noiseSuppression: true,
                   autoGainControl: true,
                   latency: 0,
