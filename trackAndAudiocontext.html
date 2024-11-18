@@ -17,15 +17,80 @@
       font-size: 16px;
       cursor: pointer;
     }
+
+    #log-container {
+      width: 80%;
+      height: 300px;
+      border: 1px solid #ccc;
+      overflow-y: auto;
+      padding: 10px;
+      font-family: monospace;
+      background: #f5f5f5;
+    }
+
+    .log-entry {
+      margin: 5px 0;
+      padding: 5px;
+      border-bottom: 1px solid #eee;
+    }
+
+    .error {
+      color: red;
+    }
   </style>
 </head>
 
 <body>
-  <!-- <button onclick="startStream()">开始采集</button>
-  <button onclick="startStream()">开始采集</button> -->
-  <!-- <audio controls></audio> -->
+  <div id="log-container"></div>
 
   <script>
+    // 创建日志容器的引用
+    const logContainer = document.getElementById('log-container');
+
+    // 重写console.log
+    const originalConsoleLog = console.log;
+    console.log = function(...args) {
+      // 调用原始的console.log
+      originalConsoleLog.apply(console, args);
+
+      // 创建新的日志条目
+      const logEntry = document.createElement('div');
+      logEntry.className = 'log-entry';
+      logEntry.textContent = args.map(arg => {
+        if (typeof arg === 'object') {
+          return JSON.stringify(arg);
+        }
+        return arg;
+      }).join(' ');
+
+      // 添加到容器
+      logContainer.appendChild(logEntry);
+      // 滚动到底部
+      logContainer.scrollTop = logContainer.scrollHeight;
+    };
+
+    // 重写console.error
+    const originalConsoleError = console.error;
+    console.error = function(...args) {
+      // 调用原始的console.error
+      originalConsoleError.apply(console, args);
+
+      // 创建新的错误日志条目
+      const logEntry = document.createElement('div');
+      logEntry.className = 'log-entry error';
+      logEntry.textContent = args.map(arg => {
+        if (typeof arg === 'object') {
+          return JSON.stringify(arg);
+        }
+        return arg;
+      }).join(' ');
+
+      // 添加到容器
+      logContainer.appendChild(logEntry);
+      // 滚动到底部
+      logContainer.scrollTop = logContainer.scrollHeight;
+    };
+
     var audioStream = null;
     async function setupAudio() {
       const audioElement = new Audio();
@@ -55,7 +120,6 @@
           if (audioTrack) {
             const { muted } = audioTrack;
             if (audioContext.state === 'running' && muted) {
-              // Add log when audio stream is muted but audio context is running
               console.log('Audio context running when track muted');
             }
           }
@@ -67,7 +131,6 @@
         audioContext.resume().catch((e) => {
           console.error('resume', e);
         });
-        // console.log('AudioContext state:', audioContext.state);
       };
 
       suspendButton.onclick = () => {
@@ -75,7 +138,6 @@
         audioContext.suspend().catch((e) => {
           console.error('suspend', e);
         });
-        // console.log('AudioContext state:', audioContext.state);
       };
 
       startButton.onclick = async () => {
@@ -96,7 +158,6 @@
             console.log('getUserMedia failed', e);
           });
 
-          // 连接到AudioContext
           const source = audioContext.createMediaStreamSource(audioStream);
           const audioTrack = audioStream.getAudioTracks()[0];
           const { muted } = audioTrack;
@@ -114,8 +175,6 @@
             const { muted } = audioTrack;
             console.log('Track mute', muted)
           }
-
-          // source.connect(audioContext.destination);
 
         } catch (error) {
           console.error('Error:', error);
