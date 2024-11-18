@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Audio Stream</title>
+  <style>
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+      padding: 20px;
+    }
+
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+
+<body>
+  <!-- <button onclick="startStream()">开始采集</button>
+  <button onclick="startStream()">开始采集</button> -->
+  <!-- <audio controls></audio> -->
+
+  <script>
+    var audioStream = null;
+    async function setupAudio() {
+      const audioElement = new Audio();
+
+      const startButton = document.createElement('button');
+      startButton.textContent = '开始采集';
+
+      const resumeButton = document.createElement('button');
+      resumeButton.textContent = 'Resume AudioContext';
+
+      const suspendButton = document.createElement('button');
+      suspendButton.textContent = 'Suspend AudioContext';
+
+      document.body.appendChild(startButton);
+      document.body.appendChild(resumeButton);
+      document.body.appendChild(suspendButton);
+
+      const audioContext = new AudioContext();
+
+      audioContext.onstatechange = (() => {
+        console.log(
+          `WebRTCInput AudioContext state changed to ${audioContext.state}}`
+        );
+        if (audioStream) {
+          const audioTrack = audioStream.getAudioTracks()[0];
+          if (audioTrack) {
+            const { muted } = audioTrack;
+            if (audioContext.state === 'running' && muted) {
+              // Add log when audio stream is muted but audio context is running
+              console.log('Audio context running when track muted');
+            }
+          }
+        }
+      });
+
+      resumeButton.onclick = () => {
+        console.log('audioContext.resume()');
+        audioContext.resume();
+        // console.log('AudioContext state:', audioContext.state);
+      };
+
+      suspendButton.onclick = () => {
+        console.log('audioContext.suspend()');
+        audioContext.suspend();
+        // console.log('AudioContext state:', audioContext.state);
+      };
+
+      startButton.onclick = async () => {
+        try {
+          await navigator.mediaDevices.getUserMedia({
+            audio: {
+              deviceId: undefined,
+              echoCancellation: true,
+              noiseSuppression: true,
+              autoGainControl: true
+            }
+          }).then((stream)=>{
+            console.log('getUserMedia successfully');
+            audioStream = stream;
+            audioElement.srcObject = audioStream;
+            audioElement.play();
+          }).catch((e) => {
+            console.log('getUserMedia failed', e);
+          });
+
+          // 连接到AudioContext
+          const source = audioContext.createMediaStreamSource(audioStream);
+          const audioTrack = audioStream.getAudioTracks()[0];
+          audioTrack.onended = async () => {
+            console.log('Track end');
+          }
+
+          audioTrack.onmute = () => {
+            console.log('Track mute');
+          }
+
+          audioTrack.onunmute = () => {
+            console.log('Track unmute');
+          }
+
+          // source.connect(audioContext.destination);
+
+        } catch (error) {
+          console.error('Error:', error);
+        }
+      };
+    }
+
+    setupAudio();
+  </script>
+</body>
+
+</html>
