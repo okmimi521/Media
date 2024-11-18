@@ -49,7 +49,7 @@
 
     // 重写console.log
     const originalConsoleLog = console.log;
-    console.log = function(...args) {
+    console.log = function (...args) {
       // 调用原始的console.log
       originalConsoleLog.apply(console, args);
 
@@ -71,7 +71,7 @@
 
     // 重写console.error
     const originalConsoleError = console.error;
-    console.error = function(...args) {
+    console.error = function (...args) {
       // 调用原始的console.error
       originalConsoleError.apply(console, args);
 
@@ -108,43 +108,7 @@
       document.body.appendChild(resumeButton);
       document.body.appendChild(suspendButton);
 
-      const audioContext = new AudioContext();
-      const audioTrack = audioStream?.getAudioTracks()[0];
-      const { muted } = audioTrack;
-      if(muted == false){
-        audioContext.resume().catch((e) => {
-          console.error('resume', e);
-        });
-      }
 
-      audioContext.onstatechange = (() => {
-        console.log(
-          `WebRTCInput AudioContext state changed to ${audioContext.state}}`
-        );
-        if (audioStream) {
-          const audioTrack = audioStream.getAudioTracks()[0];
-          if (audioTrack) {
-            const { muted } = audioTrack;
-            if (audioContext.state === 'running' && muted) {
-              console.log('Audio context running when track muted');
-            }
-          }
-        }
-      });
-
-      resumeButton.onclick = () => {
-        console.log('audioContext.resume()');
-        audioContext.resume().catch((e) => {
-          console.error('resume', e);
-        });
-      };
-
-      suspendButton.onclick = () => {
-        console.log('audioContext.suspend()');
-        audioContext.suspend().catch((e) => {
-          console.error('suspend', e);
-        });
-      };
 
       startButton.onclick = async () => {
         try {
@@ -155,7 +119,7 @@
               noiseSuppression: true,
               autoGainControl: true
             }
-          }).then((stream)=>{
+          }).then((stream) => {
             console.log('getUserMedia successfully');
             audioStream = stream;
             audioElement.srcObject = audioStream;
@@ -168,6 +132,45 @@
           const audioTrack = audioStream.getAudioTracks()[0];
           const { muted } = audioTrack;
           console.log('Track mute', muted)
+
+
+
+          const audioContext = new AudioContext();
+          if (muted == false) {
+            audioContext.resume().catch((e) => {
+              console.error('resume', e);
+            });
+          }
+
+          audioContext.onstatechange = (() => {
+            console.log(
+              `WebRTCInput AudioContext state changed to ${audioContext.state}}`
+            );
+            if (audioStream) {
+              const audioTrack = audioStream.getAudioTracks()[0];
+              if (audioTrack) {
+                const { muted } = audioTrack;
+                if (audioContext.state === 'running' && muted) {
+                  console.log('Audio context running when track muted');
+                }
+              }
+            }
+          });
+
+          resumeButton.onclick = () => {
+            console.log('audioContext.resume()');
+            audioContext.resume().catch((e) => {
+              console.error('resume', e);
+            });
+          };
+
+          suspendButton.onclick = () => {
+            console.log('audioContext.suspend()');
+            audioContext.suspend().catch((e) => {
+              console.error('suspend', e);
+            });
+          };
+
           audioTrack.onended = async () => {
             console.log('Track end');
           }
@@ -191,4 +194,5 @@
     setupAudio();
   </script>
 </body>
+
 </html>
