@@ -64,13 +64,17 @@
 
       resumeButton.onclick = () => {
         console.log('audioContext.resume()');
-        audioContext.resume();
+        audioContext.resume().catch((e) => {
+          console.error('resume', e);
+        });
         // console.log('AudioContext state:', audioContext.state);
       };
 
       suspendButton.onclick = () => {
         console.log('audioContext.suspend()');
-        audioContext.suspend();
+        audioContext.suspend().catch((e) => {
+          console.error('suspend', e);
+        });
         // console.log('AudioContext state:', audioContext.state);
       };
 
