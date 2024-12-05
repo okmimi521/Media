@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background-color: #f9f9f9;
+      min-height: 100vh;
+    }
+
+    #container {
+      max-width: 800px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 16px;
+    }
+
+    audio {
+      width: 100%;
+      margin: 16px 0;
+    }
+
+    #log-container {
+      width: 100%;
+      height: calc(100vh - 120px);
+      border-radius: 8px;
+      border: 1px solid #e0e0e0;
+      background: #fff;
+      overflow-y: auto;
+      padding: 12px;
+      font-family: monospace;
+      font-size: 14px;
+      line-height: 1.5;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+
+    .log-entry {
+      padding: 4px 0;
+      border-bottom: 1px solid #f0f0f0;
+    }
+
+    .log-entry:last-child {
+      border-bottom: none;
+    }
+
+    .error {
+      color: #dc3545;
+    }
+
+    @media (max-width: 480px) {
+      #container {
+        padding: 12px;
+      }
+
+      #log-container {
+        font-size: 12px;
+        height: calc(100vh - 100px);
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div id="container">
+    <audio id="gum-local" controls autoplay></audio>
+    <div id="log-container"></div>
+  </div>
+  <script src="getUserMediaAndPlay.js"></script>
+</body>
+</html>
