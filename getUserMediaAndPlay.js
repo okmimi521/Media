@@ -89,7 +89,6 @@ if (isDeviceChangeSupported()) {
   console.log('Device change event is not supported on this platform');
 }
 
-// 其余代码保持不变...
 function handleSuccess(stream) {
   const audioTrack = stream?.getAudioTracks()[0];
   micId = audioTrack.deviceId;
