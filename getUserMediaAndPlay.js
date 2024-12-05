@@ -128,10 +128,6 @@ function handleSuccess(stream) {
     const { muted } = audioTrack;
     console.log('Track unmute', muted);
   };
-
-  stream.oninactive = function() {
-    console.log('Stream ended');
-  };
   
   window.stream = stream;
   audio.srcObject = stream;
@@ -148,12 +144,13 @@ async function startCapture() {
     window.stream.getTracks().forEach(track => track.stop());
   }
   
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia(constraints);
-    handleSuccess(stream);
-  } catch (error) {
-    handleError(error);
-  }
+  const stream = await navigator.mediaDevices.getUserMedia(constraints)
+    .then((stream) => {
+      handleSuccess(stream);
+    })
+    .catch((error) => {
+      handleError(error);
+    });
 }
 
 (async () => {
