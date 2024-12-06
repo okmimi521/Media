@@ -107,6 +107,7 @@ function createAudioContextWithWorklet() {
   audioContextWithWorkletList.push({ctx: ctx, stateList: []});
   
   updateAudioContextWithWorkletAmountInUI();
+  log(ctx.state)
 }
 
 let levelWorkletprocessorjs;
