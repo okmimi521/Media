@@ -29,6 +29,11 @@
             width: 0%;
             background-color: #4CAF50;
         }
+        select {
+            padding: 5px;
+            margin: 10px 0;
+            width: 300px;
+        }
     </style>
 </head>
 <body>
@@ -48,13 +53,55 @@
 
     <div class="recorder">
         <h2>Audio Recorder (WAV)</h2>
+        <select id="micSelect">
+            <option value="">选择麦克风设备...</option>
+        </select>
+        <button id="refreshMicList">刷新设备列表</button>
+        <br>
         <button id="startRecordButton">Start Recording</button>
         <button id="stopRecordButton">Stop Recording</button>
         <div id="downloadLink"></div>
     </div>
 
     <script>
-       
+        let selectedMicId = '';
+        
+        // 获取麦克风列表
+        async function getMicrophoneList() {
+            try {
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const micSelect = document.getElementById('micSelect');
+
+                micSelect.innerHTML = '<option value="">选择麦克风设备...</option>';
+                
+                devices.forEach(device => {
+                    if (device.kind === 'audioinput') {
+                        const option = document.createElement('option');
+                        option.value = device.deviceId;
+                        option.text = device.label || `麦克风 ${micSelect.length + 1}`;
+                        micSelect.appendChild(option);
+                    }
+                });
+
+            } catch (error) {
+                console.error('获取麦克风列表失败:', error);
+            }
+        }
+
+        // 初始化设备选择相关事件
+        function initDeviceSelection() {
+            const micSelect = document.getElementById('micSelect');
+            const refreshButton = document.getElementById('refreshMicList');
+
+            micSelect.addEventListener('change', (e) => {
+                selectedMicId = e.target.value;
+            });
+
+            refreshButton.addEventListener('click', getMicrophoneList);
+
+            getMicrophoneList();
+        }
+
         function setupAudioPlayer(playerId, playButtonId, pauseButtonId, stopButtonId) {
             const audioPlayer = document.getElementById(playerId);
             const playButton = document.getElementById(playButtonId);
@@ -89,16 +136,23 @@
         stopRecordButton.addEventListener('click', stopRecording);
 
         async function startRecording() {
+            if (!selectedMicId) {
+                alert('请先选择麦克风设备');
+                return;
+            }
+
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: {
-                  deviceId: undefined,
-                  echoCancellation: true,
-                  noiseSuppression: true,
-                  autoGainControl: true,
-                  latency: 0,
-                  channelCount: 2,
-                  sampleRate: 48000
-                } });
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    audio: {
+                        deviceId: { exact: selectedMicId },
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                        autoGainControl: true,
+                        latency: 0,
+                        channelCount: 2,
+                        sampleRate: 48000
+                    } 
+                });
 
                 mediaRecorder = new MediaRecorder(stream);
 
@@ -118,6 +172,9 @@
                     downloadLink.appendChild(link);
 
                     audioChunks = [];
+                    
+                    // 停止所有轨道
+                    stream.getTracks().forEach(track => track.stop());
                 };
 
                 mediaRecorder.start();
@@ -125,6 +182,7 @@
                 stopRecordButton.disabled = false;
             } catch (error) {
                 console.error('Error starting recording:', error);
+                alert('录音失败: ' + error.message);
             }
         }
 
@@ -135,6 +193,9 @@
                 stopRecordButton.disabled = true;
             }
         }
+
+        // 初始化设备选择
+        initDeviceSelection();
     </script>
 </body>
 </html>
