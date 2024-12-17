@@ -26,7 +26,8 @@ const constraints = window.constraints = {
     deviceId: undefined,
     echoCancellation: true,
     noiseSuppression: true,
-    autoGainControl: true
+    autoGainControl: true,
+    channelCount:2
   },
   video: false
 };
