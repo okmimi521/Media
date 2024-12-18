@@ -65,7 +65,8 @@
 
     <script>
         let selectedMicId = '';
-        
+        let micId;
+        let micLabel;
         // 获取麦克风列表
         async function getMicrophoneList() {
             try {
@@ -158,8 +159,8 @@
                 const audioTrack = stream?.getAudioTracks()[0];
                   micId = audioTrack.deviceId;
                   micLabel = audioTrack.label;
-                  console.log('Got stream with constraints:', constraints);
-                  console.log('Using audio device: ' + audioTrack.label);
+                  // console.log('Got stream with constraints:', constraints);
+                  // console.log('Using audio device: ' + audioTrack.label);
                 
                   audioTrack.onended = async () => {
                     console.log('Track end');
