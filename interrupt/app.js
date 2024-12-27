@@ -261,7 +261,9 @@ window.addEventListener('load', async () => {
     $('#clearAudioContextWithWorklet').click(clearAudioContextWithWorklet);
     $('#playTagButton').click(mannualPlayAudioTag);
     $('#resumeAudioContext').click(mannualResumeAllAudioContext);
-    $('#replaceStream').click(WebRTCAudio.recapture)
+    $('#replaceStream').click(async function() {
+	await WebRTCAudio.recapture(prepareConstraints());
+    })
     updateDevice();
     navigator.mediaDevices.addEventListener("devicechange", updateDevice);
     document.addEventListener('visibilitychange', () => {
