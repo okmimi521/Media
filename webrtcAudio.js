@@ -6,7 +6,7 @@ import StatCaculator from './StatCaculator.js'
     PeerConnection Testing Start
 
 */
-var stream;
+let stream;
 var peerconnectionA;
 var peerconnectionB;
 let loopbackstream;
@@ -61,9 +61,9 @@ async function startAudioEstablish (constraints) {
     console.log('Starting call');
     try {
       stream = await common.getAudioStream(constraints)
-      window.audioStream = stream
     } catch (e) {
-      common.error(`[${new Date().toLocaleTimeString()}] capture error: `, e.message, e);
+      common.error(`[${new Date().toLocaleTimeString()}] capture error: `, e.message, e.name);
+      throw e;
     }
   // worklet for audio level
   // levelWorkletNode = await createAudioLevelProcessorNode();
@@ -76,6 +76,14 @@ async function startAudioEstablish (constraints) {
     startStatsMonitor(peerconnectionA, peerconnectionB);
     common.audioSrcObjPlay(receiveStream, commonui.uiGetSelectSpeaker())
     return receiveStream;
+  }
+
+  function getSendTrack () {
+    return stream?.getAudioTracks()[0];
+  }
+
+  function getSendStream() {
+    return stream;
   }
   
   const getPeerconnectionStream = async (localStream) => {
@@ -448,11 +456,38 @@ function toggleTrackEnable() {
   return track.enabled;
 }
 
+async function recapture () {
+  if (!stream) return;
+  common.stopStream(stream);
+  stream = null;
+
+  try {
+    stream = await common.getAudioStream(constraints)
+  } catch (e) {
+    common.error(`[${new Date().toLocaleTimeString()}] capture error: `, e.message, e.name);
+    throw e;
+  }
+  let transceiver = this.publisher.getTransceivers();
+  let sender;
+  if (transceiver.length) 
+    sender = transceiver[0].sender;
+  
+  stream.getAudioTracks().forEach((track) => {
+    if (sender)
+    sender.replaceTrack(track).catch((error) => {
+      common.error(`[${new Date().toLocaleTimeString()}] replaceTrack error: `, e.message, e);
+    });
+  });
+}
+
 export default {
     startAudioEstablish,
     adjustJitterbuffertTaget,
     hangup,
     bindSyncFuncToVideo,
     getAudioPlayTag,
-    toggleTrackEnable
+    toggleTrackEnable,
+    getSendTrack,
+    getSendStream,
+    recapture
 }
