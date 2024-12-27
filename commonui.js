@@ -36,23 +36,38 @@ function uiUpdateAudioStatus(audioContext, track)
     if(audioContext)
         if($("#audioContextStatus").attr("status") != audioContext.state)
         {
-            $("#audioContextStatus").text($("#audioContextStatus").text() + "->" + audioContext.state);
+            $("#audioContextStatus").html($("#audioContextStatus").html() + "->" + uiGenerateDateSpan() +audioContext.state);
             $("#audioContextStatus").attr("status", audioContext.state)
         }
     if(track)
     {
         if($("#audioTrackReadyState").attr("status") != track.readyState)
         {
-            $("#audioTrackReadyState").text($("#audioTrackReadyState").text() + "->" + track.readyState);
+            $("#audioTrackReadyState").html($("#audioTrackReadyState").html() + "->" + uiGenerateDateSpan() + track.readyState);
             $("#audioTrackReadyState").attr("status", track.readyState)
         }
         if($("#audioTrackMute").attr("status") != track.muted.toString())
         {
-            $("#audioTrackMute").text($("#audioTrackMute").text() + "->" + track.muted);
+            $("#audioTrackMute").html($("#audioTrackMute").html() + "->" + uiGenerateDateSpan() + track.muted);
             $("#audioTrackMute").attr("status", track.muted.toString())
         }
     }
+    updateAudioTrackLabel(track);
 }
+
+function updateAudioTrackLabel (track) {
+    if(!track) return;
+    $("#audioTrackReadyLabel").html($("#audioTrackReadyLabel").html() + "->" + uiGenerateDateSpan() + track.label);
+    $("#audioTrackReadyLabel").attr("status", track.label+track.id)
+}
+
+function uiUpdateVisibilityStatus() {
+    if($("#visibilityState").attr("status") != document.visibilityState)
+    {
+        $("#visibilityState").html($("#visibilityState").html() + "->" + uiGenerateDateSpan() + document.visibilityState);
+        $("#visibilityState").attr("status", document.visibilityState)
+    }
+} 
 
 function uiGetSelectSpeaker() {
     return $('#outputs :selected').val()
@@ -63,7 +78,7 @@ function uiGetSelectMic() {
 }
 
 async function autoChooseDevice(sourceLabel, destinationLabel) {
-    let deviceList = await common.enumerateDevices();
+    let {deviceList, addDeviceList, removeDeviceList, changeList} = await common.enumerateDevices();
     deviceList = deviceList.filter(device => device.kind === "audioinput" || (device.kind === "audiooutput"));
     uiRefreshDeviceList(deviceList);
     
@@ -83,6 +98,7 @@ function uiGetSelectAPM() {
         agc: $('#agc').is(":checked"),
         ns: $('#ns').is(":checked"),
         ec: $('#ec').is(":checked"),
+        deviceNull: $('#deviceNull').is(":checked"),
     }
 };
 
@@ -96,11 +112,29 @@ function uiDebugPrint(...args) {
 	$("#debug").scrollTop($("#debug").prop("scrollHeight"));
 }
 
+function uiGenerateDateSpan (time = new Date()) {
+    return `<span style="color: grey;background: lightgrey; padding: 0 2px; border-radius: 10px;">${time.toLocaleTimeString()}</span>`;
+}
+
+function uiGenerateDeviceDiv(deviceList) {
+    if (!deviceList) return;
+    let str = '';
+    deviceList.forEach(device=>{
+        str+=`${device.kind}: ${device.label}, ${device.deviceId}<br>`
+    })
+    return str;
+}
+
 export default {
     autoChooseDevice,
     uiGetSelectSpeaker,
     uiGetSelectMic,
     uiGetSelectAPM,
 	uiDebugPrint,
-    uiUpdateAudioStatus
+    uiUpdateAudioStatus,
+    uiGenerateDateSpan,
+    uiUpdateVisibilityStatus,
+    uiGenerateDeviceDiv,
+    updateAudioTrackLabel,
+    uiRefreshDeviceList
 }
