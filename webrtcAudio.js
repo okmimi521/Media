@@ -456,7 +456,7 @@ function toggleTrackEnable() {
   return track.enabled;
 }
 
-async function recapture () {
+async function recapture (constraints) {
   if (!stream) return;
   common.stopStream(stream);
   stream = null;
