@@ -148,7 +148,7 @@ let levelSourceNodeList = [];
 let stream;
 const createAudioLevelProcessorNode = async (ctx) => {
     if(!levelWorkletprocessorjs)
-	levelWorkletprocessorjs = await common.requestJS(`${document.location.origin}/interrupt/audioLevelProcessor.js`);
+	levelWorkletprocessorjs = await common.requestJS(`${document.location.origin}/audioLevelProcessor.js`);
     await ctx.audioWorklet.addModule(levelWorkletprocessorjs);
 
     let levelWorkletNode = new ZoomAudioLevelAudioWorkletNode(ctx, 'audioLevelProcessor');
