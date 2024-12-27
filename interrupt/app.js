@@ -1,6 +1,6 @@
 import common from "../common.js"
 import commonui from "../commonui.js";
-import WebRTCAudio from '../webrtcAudio.js'
+import WebRTCAudio from '../WebrtcAudio.js'
 const { log , error, requestJS, chromeAECWorkaroundStream, chromeAECWorkaroundStream2 }= common;
 
 
@@ -14,11 +14,11 @@ const prepareConstraints = () => {
     },
     video: false
   };
-  const {agc, ns, ec} = commonui.uiGetSelectAPM();
+  const {agc, ns, ec, deviceNull} = commonui.uiGetSelectAPM();
   constraints.audio.autoGainControl = agc;
   constraints.audio.noiseSuppression = ns;
   constraints.audio.echoCancellation = ec;
-  constraints.audio.deviceId = {exact: commonui.uiGetSelectMic()};
+  constraints.audio.deviceId = deviceNull ? undefined : {exact: commonui.uiGetSelectMic()};
   return constraints;
 };
 
@@ -31,14 +31,15 @@ function registerRecvTrackListener(audioRecvStream) {
 }
 
 function updateRecvStatusInUI(track) {
+
   if($("#audioRecvTrackReadyState").attr("status") != track.readyState)
   {
-      $("#audioRecvTrackReadyState").text($("#audioRecvTrackReadyState").text() + "->" + track.readyState);
+      $("#audioRecvTrackReadyState").html($("#audioRecvTrackReadyState").html() + "->" + commonui.uiGenerateDateSpan() + track.readyState);
       $("#audioRecvTrackReadyState").attr("status", track.readyState)
   }
   if($("#audioRecvTrackMute").attr("status") != track.muted.toString())
   {
-      $("#audioRecvTrackMute").text($("#audioRecvTrackMute").text() + "->" + track.muted);
+      $("#audioRecvTrackMute").html($("#audioRecvTrackMute").html() + "->" + commonui.uiGenerateDateSpan() + track.muted);
       $("#audioRecvTrackMute").attr("status", track.muted.toString())
   }
 }
@@ -59,25 +60,31 @@ function registerPlayTagListner(tag) {
 
 function updatePlaytagStatusInUI (tag, eventText) {
   if(!eventText)return;
+  
   if($("#audioPlayTag").attr("status") != eventText)
   {
-      $("#audioPlayTag").text($("#audioPlayTag").text() + "->" + eventText);
+      $("#audioPlayTag").html($("#audioPlayTag").html() + "->" + commonui.uiGenerateDateSpan() + eventText);
       $("#audioPlayTag").attr("status", eventText)
   }
+  if($("#audioPlayTagPaused").attr("status") != tag.paused.toString())
+    {
+        $("#audioPlayTagPaused").html($("#audioPlayTagPaused").html() + "->" + commonui.uiGenerateDateSpan() + tag.paused);
+        $("#audioPlayTagPaused").attr("status", tag.paused.toString())
+    }
 }
 
 let audioContextList = [];
 function createAudioContext() {
   let ctx = new AudioContext();
-  audioContextList.push({ctx: ctx, stateList: []});
+  audioContextList.push({ctx: ctx, stateList: [{time: new Date(), state: ctx.state, isEvent: false}]});
   ctx.onstatechange = ()=>{
     audioContextList.forEach(e=>{
-      if(e.ctx==ctx) 
-        e.stateList.push(ctx.state)
+      if(e.ctx==ctx && e.stateList[e.stateList.length - 1].state != ctx.state) 
+        e.stateList.push({time: new Date(), state: ctx.state, isEvent: true})
     })
     updateAudioContextStatus();
   }
-  updateAudioContextAmountInUI();
+  updateAudioContextStatus();
 }
 
 function clearAudioContext() {
@@ -85,10 +92,6 @@ function clearAudioContext() {
     e.ctx.close().then(()=>log("one audioconext closed")).catch(e=>{error("one audioconext closed failed: ", e)});
   })
   audioContextList = [];
-  updateAudioContextAmountInUI();
-}
-function updateAudioContextAmountInUI() {
-  $('#audioContextAmount').text(audioContextList.length);
 }
 
 let audioContextWithWorkletList = [];
@@ -96,20 +99,16 @@ function createAudioContextWithWorklet() {
   if(!window.AudioWorkletNode)
     return console.warn("AudioWorkletNode not support.")
   let ctx = new AudioContext();
+  audioContextWithWorkletList.push({ctx: ctx, stateList: [{time: new Date(), state: ctx.state, isEvent: false}]});
   ctx.onstatechange = ()=>{
     audioContextWithWorkletList.forEach(e=>{
-      if(e.ctx==ctx) 
-        e.stateList.push(ctx.state)
+      if(e.ctx==ctx && e.stateList[e.stateList.length - 1].state != ctx.state) 
+        e.stateList.push({time: new Date(), state: ctx.state, isEvent: true})
     })
     updateAudioContextStatus();
   }
   createAudioLevelProcessorNode(ctx);
-  audioContextWithWorkletList.push({ctx: ctx, stateList: []});
-  
-  updateAudioContextWithWorkletAmountInUI();
-  setTimeout(() => {
-    log(ctx.state)
-  }, 1000)
+  updateAudioContextStatus();
 }
 
 let levelWorkletprocessorjs;
@@ -146,15 +145,16 @@ let levelWorkletprocessorjs;
 
 let levelnodeList = [];
 let levelSourceNodeList = [];
+let stream;
 const createAudioLevelProcessorNode = async (ctx) => {
     if(!levelWorkletprocessorjs)
 	levelWorkletprocessorjs = await common.requestJS(`${document.location.origin}/interrupt/audioLevelProcessor.js`);
     await ctx.audioWorklet.addModule(levelWorkletprocessorjs);
 
     let levelWorkletNode = new ZoomAudioLevelAudioWorkletNode(ctx, 'audioLevelProcessor');
-    if(window.audioStream){
+    if(stream){
       let snode = ctx.createMediaStreamSource(
-        window.audioStream
+        stream
       );
       snode.connect(levelWorkletNode);
       log("stream source connected to ZoomAudioLevelAudioWorkletNode")
@@ -186,29 +186,31 @@ function clearAudioContextWithWorklet() {
     e.ctx.close().then(()=>log("one audioconext with worklet closed")).catch(e=>{error("one audioconext with worklet closed failed: ", e)});
   })
   audioContextWithWorkletList = [];
-  updateAudioContextWithWorkletAmountInUI();
-}
-function updateAudioContextWithWorkletAmountInUI() {
-  $('#audioContextWithWorkletAmount').text(audioContextWithWorkletList.length);
 }
 
 function updateAudioContextStatus() {
-  let str = "AudioContext: ";
-  audioContextList.forEach((e,i)=>{
-    str+= `<br>[${i}]`
-    e.stateList.forEach((e,i)=>{
-      str+= `${e}=>`
+  let str = '';
+  if(audioContextList.length) {
+    str += "AudioContext: ";
+    audioContextList.forEach((e,i)=>{
+      str+= `<br>[${i}]`
+      e.stateList.forEach((e,i)=>{
+        str+=  `${commonui.uiGenerateDateSpan(e.time)}${e.isEvent ? "(Event)" + e.state : e.state}->`
+      })
     })
-  })
+  }
   
-  str += `<br>\tAudioContext with worklet: `;
-  audioContextWithWorkletList.forEach((e,i)=>{
-    str+= `<br>[${i}]`
-    e.stateList.forEach((e,i)=>{
-      str+= `${e}=>`
+  
+  if(audioContextWithWorkletList.length) {
+    str += `<br>\tAudioContext with worklet: `;
+    audioContextWithWorkletList.forEach((e,i)=>{
+      str+= `<br>[${i}]`
+      e.stateList.forEach((e,i)=>{
+        str+= `${commonui.uiGenerateDateSpan(e.time)}${e.isEvent ? "(Event)" + e.state : e.state}->`
+      })
     })
-  })
-  $('#audioContextStatus').html(str);
+    $('#audioContextStatus').html(str);
+  }
 }
 
 let audioTag;
@@ -234,8 +236,10 @@ function mannualResumeAllAudioContext () {
 }
 
 window.addEventListener('load', async () => {
-    $('#callButton').click(e => {
-        call();
+    $('#callButton').click(async e => {
+        await call();
+        createAudioContextWithWorklet();
+        $('#createAudioContextWithWorklet').attr('disabled', false)
     })
     $('#callButton3Secs').click(e => {
       setTimeout(call, 30000);
@@ -245,29 +249,57 @@ window.addEventListener('load', async () => {
       if(result != undefined) 
         $('#disableTrackButton').text(result ? "Disable Track" : "Enable Track" )
     })
-    $('#hangupButton').click(hangup)
+    $('#enumerateDevice').click(updateDevice)
+    $('#hangupButton').click(()=>{
+      hangup();
+      $('#createAudioContextWithWorklet').attr('disabled', true)
+    })
+    $('#updateTrackLabelButton').click(updateTrackLabel);
     $('#createAudioContext').click(createAudioContext);
     $('#clearAudioContext').click(clearAudioContext);
     $('#createAudioContextWithWorklet').click(createAudioContextWithWorklet);
     $('#clearAudioContextWithWorklet').click(clearAudioContextWithWorklet);
     $('#playTagButton').click(mannualPlayAudioTag);
     $('#resumeAudioContext').click(mannualResumeAllAudioContext);
-    navigator.mediaDevices.ondevicechange = async event => {
-      let deviceList = await navigator.mediaDevices.enumerateDevices();
-      log(`[${new Date().toLocaleTimeString()}] ondevicechange: `, deviceList)
-    }
+    $('#replaceStream').click(WebRTCAudio.recapture)
+    updateDevice();
+    navigator.mediaDevices.addEventListener("devicechange", updateDevice);
     document.addEventListener('visibilitychange', () => {
+      commonui.uiUpdateVisibilityStatus();
       log(`[${new Date().toLocaleTimeString()}] document visibilitychange: `, document.visibilityState)
     });
 });
 
+async function updateDevice(event) {
+  let {deviceList, addDeviceList, removeDeviceList, changeList} = await common.enumerateDevices();
+  if($("#deviceList").attr("status") == "")
+  {
+    $("#deviceList").html($("#deviceList").html() + commonui.uiGenerateDateSpan() + commonui.uiGenerateDeviceDiv(deviceList));
+    $("#deviceList").attr("status", true)
+  } else {
+    $("#deviceList").html($("#deviceList").html() + "<br>" + commonui.uiGenerateDateSpan() + commonui.uiGenerateDeviceDiv(changeList) + "+" + commonui.uiGenerateDeviceDiv(addDeviceList) + "-" + commonui.uiGenerateDeviceDiv(removeDeviceList));
+  }
+  if(event)
+    log(`[${new Date().toLocaleTimeString()}] ondevicechange: `, deviceList)
+}
+
+function updateTrackLabel () {
+  commonui.updateAudioTrackLabel(WebRTCAudio.getSendTrack());
+}
+
 async function call () {
-  audioTag = WebRTCAudio.getAudioPlayTag();
-  registerPlayTagListner(audioTag);
-  let audioRecvStream = await WebRTCAudio.startAudioEstablish(prepareConstraints());
-  registerRecvTrackListener(audioRecvStream);
+  try {
+    audioTag = WebRTCAudio.getAudioPlayTag();
+    registerPlayTagListner(audioTag);
+    let audioRecvStream = await WebRTCAudio.startAudioEstablish(prepareConstraints());
+    registerRecvTrackListener(audioRecvStream);
+    stream = WebRTCAudio.getSendStream();
+  } catch (e) {
+    hangup()
+  }
 }
 
 function hangup () {
   WebRTCAudio.hangup();
+  stream = null;
 }
