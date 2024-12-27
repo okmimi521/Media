@@ -29,19 +29,71 @@ let audioTag2 = new Audio();
 audioTag.autoplay = audioTag2.autoplay = true;
 let deviceList;
 
+let permissionGrated = false;
+async function hasPermission () {
+    if(permissionGrated) return permissionGrated;
+    if ('permissions' in navigator) {
+        const cameraPermission = await navigator.permissions.query({ name: 'camera' });
+        const microphonePermission = await navigator.permissions.query({ name: 'microphone' });
+        if (cameraPermission.state == "granted" && microphonePermission.state == "granted")
+        {
+            permissionGrated = true;
+            return permissionGrated;
+        } else 
+            return false;
+    }
+    return false;
+}
+
 export async function enumerateDevices() { 
     if(!navigator.mediaDevices)
         return [];
-    let stream = await  navigator.mediaDevices.getUserMedia({audio: true, video: false})
-    stream.getTracks().forEach(track =>{
-        track.stop();
-    }); 
-    stream = null;
-    deviceList = await navigator.mediaDevices.enumerateDevices();
+    if(!await hasPermission()) {
+        let stream = await navigator.mediaDevices.getUserMedia({audio: true, video: true})
+        stream.getTracks().forEach(track =>{
+            track.stop();
+        }); 
+        stream = null;
+    }
+    let dl = await navigator.mediaDevices.enumerateDevices();
+    commonui.uiRefreshDeviceList(dl);
+    let {addDeviceList, removeDeviceList, changeList} = getDeviceListDiff(dl);
     deviceList.forEach((device) => {
-        log(`${device.kind}: ${device.label} deviceId = ${device.deviceId}`);
+        log(`${device.kind}: ${device.label}, ${device.deviceId}`);
     });
-    return deviceList;
+    return {deviceList, addDeviceList, removeDeviceList, changeList};
+}
+
+function   getDeviceListDiff(curDeviceList) {
+    function cmp(a, b) {
+        let rv = a.kind === b.kind ? (a.deviceId === b.deviceId ? 0 : a.deviceId > b.deviceId ? 1 : -1)
+        : (a.kind > b.kind ? 1 : -1);
+        return rv;
+    }
+    curDeviceList.sort(cmp);
+    if (!deviceList) {
+        deviceList = curDeviceList;
+        return {addDeviceList:curDeviceList, removeDeviceList:[]};
+    }
+    let addDeviceList =[], removeDeviceList=[], changeList = [];
+    curDeviceList.forEach(e=> {
+        let findDevice = deviceList.find(j=>j.deviceId == e.deviceId && j.kind == e.kind);
+        if(!findDevice) {
+            addDeviceList.push(e);
+        } else if (findDevice.label != e.label) {
+            changeList.push(e);
+        }
+    })
+    
+    deviceList.forEach(e => {
+        let findDevice = curDeviceList.find(j=>j.deviceId == e.deviceId && j.kind == e.kind);
+        if(!findDevice) {
+            removeDeviceList.push(e);
+        } 
+    })
+
+    deviceList = curDeviceList;
+    return {deviceList, addDeviceList, removeDeviceList, changeList};
 }
 
 export function getBrowserUserAgent() {
@@ -81,12 +133,8 @@ async function getAudioStream(constraints) {
 
       let audioTrack = stream.getAudioTracks()[0];
       commonui.uiUpdateAudioStatus(0, audioTrack);
-      audioTrack.onmute = (event) => {
-        commonui.uiUpdateAudioStatus(0, audioTrack)
-      };
-      audioTrack.onunmute = (event) => {
-        commonui.uiUpdateAudioStatus(0, audioTrack)
-      };
+      audioTrack.onmute = (event) => {commonui.uiUpdateAudioStatus(0, audioTrack)};
+      audioTrack.onunmute = (event) => {commonui.uiUpdateAudioStatus(0, audioTrack)};
       audioTrack.onended = (event) => {commonui.uiUpdateAudioStatus(0, audioTrack)};
     return stream;
 }
@@ -382,6 +430,7 @@ async function httpPost (url, json)  {
 function getAudioPlaytag1 () {
     return audioTag
 }
+
 
 export default {
     log,
