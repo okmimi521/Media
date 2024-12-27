@@ -10,25 +10,38 @@
 <body>
     <div style="background-color: #eee; padding: 20px; margin-bottom: 20px;">
         Interrupt Test
+        Device List
+        <div style="padding: 10px;">   
+            <div><strong>Select mic:</strong><select id="inputs"></select> </div>
+            <div><strong>Select speaker:</strong><select id="outputs"></select> </div>
+        </div>
         <div style="margin: 10px;">
+            <input id="deviceNull" type="checkbox" checked>Use device null
             <input id="agc" type="checkbox" checked>AGC
             <input id="ns" type="checkbox" checked>NS
             <input id="ec" type="checkbox" checked>EC
         </div>
         <div style="padding: 10px;">
             Status 
+            <div><strong>Visibility State:</strong><span id="visibilityState" status=""></span></div>
+
+            <div><strong>Audio Send Track Label:</strong><span id="audioTrackReadyLabel" status=""></span></div>
             <div><strong>Audio Send Track ReadyState:</strong><span id="audioTrackReadyState" status=""></span></div>
             <div><strong>Audio Send Track Mute:</strong><span id="audioTrackMute" status=""></span></div>
 
             <div><strong>Audio Recv Track ReadyState:</strong><span id="audioRecvTrackReadyState" status=""></span></div>
             <div><strong>Audio Recv Track Mute:</strong><span id="audioRecvTrackMute" status=""></span></div>
             
+            <div><strong>Audio Play Tag Paused:</strong><span id="audioPlayTagPaused" status=""></span></div>
             <div><strong>Audio Play Tag:</strong><span id="audioPlayTag" status=""></span></div>
             <div><strong>Audio Context:</strong><span id="audioContextStatus" status="" style="padding-left: 10px; display: block;"></span></div>
         </div>
         <!-- <div style="padding: 10px;">
             <video  id="p2pVideoPlay" autoplay playsinline width="400" height="400"></video>
         </div> -->
+        <div style="padding-top: 10px;">
+            <button id="enumerateDevice">EnumerateDevice</button>
+        </div>
         <div style="padding: 10px;">
             codecPreferences
             <select id="codec">
@@ -51,6 +64,8 @@
             <button id="callButton3Secs">Call After 30 secs</button>
         </div>
         <div style="padding-top: 10px;">
+            <button id="replaceStream">Replace Stream</button>
+            <button id="updateTrackLabelButton">Update Track Label</button>
             <button id="disableTrackButton">Disable Track</button>
             <button id="playTagButton">Manually play audio tag</button>
             <button id="resumeAudioContext">Manually resume all audio context</button>
@@ -59,24 +74,23 @@
         <div style="padding-top: 10px;">
             <button id="createAudioContext">Create One Audio Context</button>
             <button id="clearAudioContext">Clear All Audio Context</button>
-            <p>Audiocontext amount: <span id="audioContextAmount">0</span></p>
         </div>
         <div style="padding-top: 10px;">
-            <button id="createAudioContextWithWorklet">Create One Audio Context With Worklet</button>
+            <button id="createAudioContextWithWorklet" disabled>Create One Audio Context With Worklet</button>
             <button id="clearAudioContextWithWorklet">Clear All Audio Context With Worklet</button>
-            <p>Audiocontext with Worklet amount: <span id="audioContextWithWorkletAmount">0</span></p>
         </div>
     </div>
         <div id="senderStat" style="background-color: #eee; padding: 20px; margin-bottom: 20px;">
         </div>
         <div id="stat" style="background-color: #eee; padding: 20px; margin-bottom: 20px;">
         </div>
+        <div id="deviceList" style="background-color: #eee; padding: 20px; margin-bottom: 20px;" status=""></div>
         <div style="background-color: #eee; padding: 20px; margin-bottom: 20px; height: 100px;">
             <textarea id="debug" style="background-color: #000; color:white; width: 100%; height: 100%;"></textarea>
         </div>
     </div>
     
-    <script src="./jquery.js" type="text/javascript"></script>
-    <script src="./interrupt/app.js" type="module"></script>
+    <script src="../jquery.js" type="text/javascript"></script>
+    <script src="./app.js" type="module"></script>
 </body>
 </html>
