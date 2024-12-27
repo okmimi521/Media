@@ -467,7 +467,7 @@ async function recapture (constraints) {
     common.error(`[${new Date().toLocaleTimeString()}] capture error: `, e.message, e.name);
     throw e;
   }
-  let transceiver = this.publisher.getTransceivers();
+  let transceiver = peerconnectionA.getTransceivers();
   let sender;
   if (transceiver.length) 
     sender = transceiver[0].sender;
