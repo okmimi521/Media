@@ -28,9 +28,10 @@ requestDeviceButton.onclick = async event => {
   document.body.style.display = "none";
 
   try {
-    // Prompt user to select an Apple Keyboard Backlight device.
+    // Prompt user to select an Telephony device.
+    // From https://usb.org/document-library/hid-usage-tables-15
     [device] = await navigator.hid.requestDevice({
-      filters: [{ vendorId: 0x05ac, usage: 0x0f, usagePage: 0xff00 }]
+      filters: [{ usagePage: 0x0b }]
     });
     if (!device) return;
 
