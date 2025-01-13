@@ -30,13 +30,13 @@ requestDeviceButton.onclick = async event => {
   try {
     // Prompt user to select an Telephony device.
     // From https://usb.org/document-library/hid-usage-tables-15
-    navigator.hid.requestDevice({
+    [device] = await navigator.hid.requestDevice({
       filters: [{ usagePage: 0x0b }]
     });
-    // if (!device) return;
+    if (!device) return;
 
-    // console.log(`User selected "${device.productName}" HID device.`);
-    // console.log(`Now press "open device" button to be able to send reports.`);
+    console.log(`User selected "${device.productName}" HID device.`);
+    console.log(`Now press "open device" button to be able to send reports.`);
   } finally {
     document.body.style.display = "";
   }
