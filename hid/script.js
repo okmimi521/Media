@@ -47,7 +47,7 @@ openButton.onclick = async event => {
 
   await device.open();
   console.log(`Waiting for user to press "blink" button...`);
-};x
+};
 
 blinkButton.onclick = async event => {
   if (!device) return;
