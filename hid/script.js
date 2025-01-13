@@ -30,7 +30,7 @@ requestDeviceButton.onclick = async event => {
   try {
     // Prompt user to select an Telephony device.
     // From https://usb.org/document-library/hid-usage-tables-15
-    [device] = navigator.hid.requestDevice({
+    navigator.hid.requestDevice({
       filters: [{ usagePage: 0x0b }]
     });
     // if (!device) return;
