@@ -101,6 +101,8 @@ async function startAudioEstablish (constraints) {
             resolve([p1,p2, ls])
         };
         p1.addTrack(localStream.getAudioTracks()[0])
+        console.log('replace null')
+        p1.replaceTrack(null);
         PCTestGotStream(p1, p2, localStream)
         hangupButton.disabled = false;
     // startGettingAudioLevel();
