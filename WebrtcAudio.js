@@ -458,7 +458,11 @@ function toggleTrackEnable() {
 
 async function recapture (constraints) {
     console.log('replace null')
-    p1.replaceTrack(null);
+    let transceiver = peerconnectionA.getTransceivers();
+      let sender;
+      if (transceiver.length) 
+        sender = transceiver[0].sender;
+    sender.replaceTrack(null);
   // if (!stream) return;
   // common.stopStream(stream);
   // stream = null;
