@@ -101,8 +101,6 @@ async function startAudioEstablish (constraints) {
             resolve([p1,p2, ls])
         };
         p1.addTrack(localStream.getAudioTracks()[0])
-        console.log('replace null')
-        p1.replaceTrack(null);
         PCTestGotStream(p1, p2, localStream)
         hangupButton.disabled = false;
     // startGettingAudioLevel();
@@ -459,27 +457,29 @@ function toggleTrackEnable() {
 }
 
 async function recapture (constraints) {
-  if (!stream) return;
-  common.stopStream(stream);
-  stream = null;
+    console.log('replace null')
+    p1.replaceTrack(null);
+  // if (!stream) return;
+  // common.stopStream(stream);
+  // stream = null;
 
-  try {
-    stream = await common.getAudioStream(constraints)
-  } catch (e) {
-    common.error(`[${new Date().toLocaleTimeString()}] capture error: `, e.message, e.name);
-    throw e;
-  }
-  let transceiver = peerconnectionA.getTransceivers();
-  let sender;
-  if (transceiver.length) 
-    sender = transceiver[0].sender;
+  // try {
+  //   stream = await common.getAudioStream(constraints)
+  // } catch (e) {
+  //   common.error(`[${new Date().toLocaleTimeString()}] capture error: `, e.message, e.name);
+  //   throw e;
+  // }
+  // let transceiver = peerconnectionA.getTransceivers();
+  // let sender;
+  // if (transceiver.length) 
+  //   sender = transceiver[0].sender;
   
-  stream.getAudioTracks().forEach((track) => {
-    if (sender)
-    sender.replaceTrack(track).catch((error) => {
-      common.error(`[${new Date().toLocaleTimeString()}] replaceTrack error: `, e.message, e);
-    });
-  });
+  // stream.getAudioTracks().forEach((track) => {
+  //   if (sender)
+  //   sender.replaceTrack(track).catch((error) => {
+  //     common.error(`[${new Date().toLocaleTimeString()}] replaceTrack error: `, e.message, e);
+  //   });
+  // });
 }
 
 export default {
