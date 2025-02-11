@@ -457,33 +457,27 @@ function toggleTrackEnable() {
 }
 
 async function recapture (constraints) {
-    console.log('replace null')
-    let transceiver = peerconnectionA.getTransceivers();
-      let sender;
-      if (transceiver.length) 
-        sender = transceiver[0].sender;
-    sender.replaceTrack(null);
-  // if (!stream) return;
-  // common.stopStream(stream);
-  // stream = null;
+  if (!stream) return;
+  common.stopStream(stream);
+  stream = null;
 
-  // try {
-  //   stream = await common.getAudioStream(constraints)
-  // } catch (e) {
-  //   common.error(`[${new Date().toLocaleTimeString()}] capture error: `, e.message, e.name);
-  //   throw e;
-  // }
-  // let transceiver = peerconnectionA.getTransceivers();
-  // let sender;
-  // if (transceiver.length) 
-  //   sender = transceiver[0].sender;
+  try {
+    stream = await common.getAudioStream(constraints)
+  } catch (e) {
+    common.error(`[${new Date().toLocaleTimeString()}] capture error: `, e.message, e.name);
+    throw e;
+  }
+  let transceiver = peerconnectionA.getTransceivers();
+  let sender;
+  if (transceiver.length) 
+    sender = transceiver[0].sender;
   
-  // stream.getAudioTracks().forEach((track) => {
-  //   if (sender)
-  //   sender.replaceTrack(track).catch((error) => {
-  //     common.error(`[${new Date().toLocaleTimeString()}] replaceTrack error: `, e.message, e);
-  //   });
-  // });
+  stream.getAudioTracks().forEach((track) => {
+    if (sender)
+    sender.replaceTrack(track).catch((error) => {
+      common.error(`[${new Date().toLocaleTimeString()}] replaceTrack error: `, e.message, e);
+    });
+  });
 }
 
 export default {
