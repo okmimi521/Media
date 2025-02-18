@@ -106,7 +106,7 @@ function gotStream(stream) {
     openMic = stream.getAudioTracks()[0].getSettings().deviceId;
   }
   // Refresh list in case labels have become available
-  return getDevices();
+  //return getDevices();
 }
 
 function handleError(error) {
