@@ -88,7 +88,7 @@
         function createAudioContext() {
             if (!audioContext) {
                 audioContext = new AudioContext({
-                    latencyHint: 'interactive',
+                    latencyHint: 'balanced',
                     sampleRate: 48000
                 });
             }
