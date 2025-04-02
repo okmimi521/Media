@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dual MP3 Loop Players with Microphone Input and WAV Recording</title>
+    <title>Audio Player with AudioContext</title>
     <style>
         .player, .microphone, .recorder {
             margin-bottom: 20px;
@@ -19,16 +19,6 @@
         .audioControls {
             margin-top: 10px;
         }
-        #volumeMeter {
-            width: 300px;
-            height: 20px;
-            background-color: #ddd;
-        }
-        #volumeBar {
-            height: 100%;
-            width: 0%;
-            background-color: #4CAF50;
-        }
         select {
             padding: 5px;
             margin: 10px 0;
@@ -39,11 +29,6 @@
 <body>
     <div class="player">
         <h2>Audio Player 1</h2>
-        <audio id="audioPlayer1" loop>
-            <source src="test3.mp3" type="audio/mpeg">
-            Your browser does not support the audio element.
-        </audio>
-
         <div class="audioControls">
             <button id="playButton1">Play</button>
             <button id="pauseButton1">Pause</button>
@@ -67,6 +52,70 @@
         let selectedMicId = '';
         let micId;
         let micLabel;
+        let audioContext;
+        let audioBuffer;
+        let sourceNode;
+        let isPlaying = false;
+
+        // 创建 AudioContext
+        function createAudioContext() {
+            audioContext = new AudioContext({
+                latencyHint: 'interactive',
+                sampleRate: 48000
+            });
+        }
+
+        // 加载音频文件
+        async function loadAudio(url) {
+            try {
+                const response = await fetch(url);
+                const arrayBuffer = await response.arrayBuffer();
+                audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+            } catch (error) {
+                console.error('Error loading audio:', error);
+            }
+        }
+
+        // 播放音频
+        function playAudio() {
+            if (!audioContext) {
+                createAudioContext();
+            }
+
+            if (isPlaying) {
+                return;
+            }
+
+            sourceNode = audioContext.createBufferSource();
+            sourceNode.buffer = audioBuffer;
+            sourceNode.loop = true;
+            sourceNode.connect(audioContext.destination);
+            
+            if (audioContext.state === 'suspended') {
+                audioContext.resume();
+            }
+            
+            sourceNode.start(0);
+            isPlaying = true;
+        }
+
+        // 暂停音频
+        function pauseAudio() {
+            if (audioContext && audioContext.state === 'running') {
+                audioContext.suspend();
+                isPlaying = false;
+            }
+        }
+
+        // 停止音频
+        function stopAudio() {
+            if (sourceNode) {
+                sourceNode.stop();
+                sourceNode.disconnect();
+                isPlaying = false;
+            }
+        }
+
         // 获取麦克风列表
         async function getMicrophoneList() {
             try {
@@ -103,28 +152,16 @@
             getMicrophoneList();
         }
 
-        function setupAudioPlayer(playerId, playButtonId, pauseButtonId, stopButtonId) {
-            const audioPlayer = document.getElementById(playerId);
-            const playButton = document.getElementById(playButtonId);
-            const pauseButton = document.getElementById(pauseButtonId);
-            const stopButton = document.getElementById(stopButtonId);
+        // 设置音频播放器控制
+        function setupAudioPlayer() {
+            const playButton = document.getElementById('playButton1');
+            const pauseButton = document.getElementById('pauseButton1');
+            const stopButton = document.getElementById('stopButton1');
 
-            playButton.addEventListener('click', () => {
-                audioPlayer.play();
-            });
-
-            pauseButton.addEventListener('click', () => {
-                audioPlayer.pause();
-            });
-
-            stopButton.addEventListener('click', () => {
-                audioPlayer.pause();
-                audioPlayer.currentTime = 0;
-            });
+            playButton.addEventListener('click', playAudio);
+            pauseButton.addEventListener('click', pauseAudio);
+            stopButton.addEventListener('click', stopAudio);
         }
-
-        // Setup audio players
-        setupAudioPlayer('audioPlayer1', 'playButton1', 'pauseButton1', 'stopButton1');
 
         // Audio Recording
         let mediaRecorder;
@@ -155,36 +192,32 @@
                     } 
                 });
 
-                // test
                 const audioTrack = stream?.getAudioTracks()[0];
-                  micId = audioTrack.deviceId;
-                  micLabel = audioTrack.label;
-                  // console.log('Got stream with constraints:', constraints);
-                  // console.log('Using audio device: ' + audioTrack.label);
+                micId = audioTrack.deviceId;
+                micLabel = audioTrack.label;
                 
-                  audioTrack.onended = async () => {
+                audioTrack.onended = async () => {
                     console.log('Track end');
                 
                     let devices = await navigator.mediaDevices.enumerateDevices();
                     let exceptionEnd = false;
                     
                     devices.forEach((device) => {
-                      if (
-                        device.kind == 'audioinput' &&
-                        device.label?.replace(/\(\w+:\w+\)|,/gi, '')?.trim() == micLabel &&
-                        device.deviceId == micId
-                      ) {
-                        exceptionEnd = true;
-                      }
+                        if (
+                            device.kind == 'audioinput' &&
+                            device.label?.replace(/\(\w+:\w+\)|,/gi, '')?.trim() == micLabel &&
+                            device.deviceId == micId
+                        ) {
+                            exceptionEnd = true;
+                        }
                     });
                     
                     if (exceptionEnd) {
-                      console.log('leave audio because some exceptions');
+                        console.log('leave audio because some exceptions');
                     } else {
-                      console.log('ended event caused by unplugging device');
+                        console.log('ended event caused by unplugging device');
                     }
-                  };
-                //
+                };
 
                 mediaRecorder = new MediaRecorder(stream);
 
@@ -205,7 +238,6 @@
 
                     audioChunks = [];
                     
-                    // 停止所有轨道
                     stream.getTracks().forEach(track => track.stop());
                 };
 
@@ -226,8 +258,12 @@
             }
         }
 
-        // 初始化设备选择
-        initDeviceSelection();
+        // 初始化
+        window.addEventListener('load', async () => {
+            initDeviceSelection();
+            setupAudioPlayer();
+            await loadAudio('test3.mp3');
+        });
     </script>
 </body>
 </html>
