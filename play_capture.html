@@ -169,6 +169,7 @@
         function setAudioNull() {
           if (currentPlayMode === 'audio') {
                 audioElement.srcObject = null;
+                audioElement.load();
             } 
         }
 
