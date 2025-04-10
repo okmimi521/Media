@@ -43,12 +43,17 @@
             <source src="test3.mp3" type="audio/mpeg">
             Your browser does not support the audio element.
         </audio>
+        <audio id="audioPlayer2" loop>
+          <source src="test2.mp3" type="audio/mpeg">
+          Your browser does not support the audio element.
+      </audio>
         <div class="audioControls">
-            <button id="playButton1">Play</button>
-            <button id="pauseButton1">Pause</button>
-            <button id="stopButton1">Stop</button>
-            <button id="setAudioNull">setAudioNull</button>
-            <button id="destroyAudioTag">destroyAudioTag</button>
+            <button id="playButton1">Play1</button>
+            <button id="pauseButton1">Pause1</button>
+            <button id="stopButton1">Stop1</button>
+            <button id="playButton2">Play2</button>
+            <button id="pauseButton2">Pause2</button>
+            <button id="stopButton2">Stop2</button>
         </div>
     </div>
 
@@ -75,7 +80,8 @@
         let currentPlayMode = 'audio'; // 默认使用 audio 标签播放
 
         const playModeSelect = document.getElementById('playMode');
-        let audioElement = document.getElementById('audioPlayer1');
+        const audioElement = document.getElementById('audioPlayer1');
+        const audioElement2 = document.getElementById('audioPlayer2');
 
         // 监听播放模式变化
         playModeSelect.addEventListener('change', function(e) {
@@ -97,50 +103,29 @@
         }
 
         // 加载音频文件
-        async function loadAudio(url) {
-            try {
-                const response = await fetch(url);
-                const arrayBuffer = await response.arrayBuffer();
-                audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-            } catch (error) {
-                console.error('Error loading audio:', error);
-            }
-        }
+        // async function loadAudio(url) {
+        //     try {
+        //         const response = await fetch(url);
+        //         const arrayBuffer = await response.arrayBuffer();
+        //         audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+        //     } catch (error) {
+        //         console.error('Error loading audio:', error);
+        //     }
+        // }
 
         // 播放音频
         async function playAudio() {
             if (currentPlayMode === 'audio') {
-                if(audioElement == null) {
-                  audioElement = document.createElement('audio');
-                  audioElement.src = 'test3.mp3';
-                }
                 audioElement.play();
                 isPlaying = true;
-            } else {
-                if (!audioContext) {
-                    createAudioContext();
-                }
+            } 
+        }
 
-                if (!audioBuffer) {
-                    await loadAudio('test3.mp3');
-                }
-
-                if (isPlaying) {
-                    return;
-                }
-
-                sourceNode = audioContext.createBufferSource();
-                sourceNode.buffer = audioBuffer;
-                sourceNode.loop = true;
-                sourceNode.connect(audioContext.destination);
-                
-                if (audioContext.state === 'suspended') {
-                    await audioContext.resume();
-                }
-                
-                sourceNode.start(0);
+        async function playAudio2() {
+            if (currentPlayMode === 'audio') {
+                audioElement2.play();
                 isPlaying = true;
-            }
+            } 
         }
 
         // 暂停音频
@@ -171,20 +156,19 @@
             }
         }
 
-        function setAudioNull() {
-          if (currentPlayMode === 'audio') {
-                audioElement.src = null;
-                audioElement.load();
-            } 
+        function stopAudio2() {
+            if (currentPlayMode === 'audio') {
+                audioElement2.pause();
+                audioElement2.currentTime = 0;
+                // isPlaying = false;
+            } else {
+                if (sourceNode) {
+                    sourceNode.stop();
+                    sourceNode.disconnect();
+                    isPlaying = false;
+                }
+            }
         }
-        
-        function destroyAudio() {
-          if (currentPlayMode === 'audio') {
-                audioElement.remove();
-                audioElement = null;
-            } 
-        }
-
 
         // 获取麦克风列表
         async function getMicrophoneList() {
@@ -225,16 +209,17 @@
         // 设置音频播放器控制
         function setupAudioPlayer() {
             const playButton = document.getElementById('playButton1');
+            const playButton2 = document.getElementById('playButton2');
             const pauseButton = document.getElementById('pauseButton1');
             const stopButton = document.getElementById('stopButton1');
-            const setNullButton = document.getElementById('setAudioNull');
-            const destroyAudioButton = document.getElementById('destroyAudioTag');
+            const stopButton2 = document.getElementById('stopButton2');
+
 
             playButton.addEventListener('click', playAudio);
             pauseButton.addEventListener('click', pauseAudio);
             stopButton.addEventListener('click', stopAudio);
-            setNullButton.addEventListener('click', setAudioNull);
-            destroyAudioButton.addEventListener('click', destroyAudio);
+            playButton2.addEventListener('click', playAudio2);
+            stopButton2.addEventListener('click', stopAudio2);
         }
 
         // Audio Recording
@@ -266,6 +251,7 @@
                         sampleRate: 48000
                     } 
                 });
+
 
                 const audioTrack = stream?.getAudioTracks()[0];
                 micId = audioTrack.deviceId;
