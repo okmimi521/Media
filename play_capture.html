@@ -70,11 +70,11 @@
         let audioBuffer;
         let sourceNode;
         let isPlaying = false;
-        let currentPlayMode = 'audio'; // 默认使用 audio 标签播放
+        let currentPlayMode = 'audio';
+        let micList = [];
 
         const playModeSelect = document.getElementById('playMode');
         const audioElement = document.getElementById('audioPlayer1');
-
         // 监听播放模式变化
         playModeSelect.addEventListener('change', function(e) {
             const newMode = e.target.value;
@@ -149,7 +149,6 @@
                 }
             }
         }
-
         // 停止音频
         function stopAudio() {
             if (currentPlayMode === 'audio') {
@@ -172,6 +171,7 @@
                 const micSelect = document.getElementById('micSelect');
 
                 micSelect.innerHTML = '<option value="">选择麦克风设备...</option>';
+                micList = [];
                 
                 devices.forEach(device => {
                     if (device.kind === 'audioinput') {
@@ -179,6 +179,7 @@
                         option.value = device.deviceId;
                         option.text = device.label || `麦克风 ${micSelect.length + 1}`;
                         micSelect.appendChild(option);
+                        micList.push(device);
                     }
                 });
 
@@ -223,24 +224,45 @@
         stopRecordButton.addEventListener('click', stopRecording);
 
         async function startRecording() {
-            if (!selectedMicId) {
-                // alert('请先选择麦克风设备');
-                // return;
-                selectedMicId = 'default';
-            }
-
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({ 
+                // 先尝试使用Headset earpiece设备
+                let headsetEarpiece = micList.find(device => device.label.includes('Headset earpiece'));
+                let stream;
+
+                if (headsetEarpiece) {
+                    try {
+                        stream = await navigator.mediaDevices.getUserMedia({
+                            audio: {
+                                deviceId: { exact: headsetEarpiece.deviceId },
+                                echoCancellation: true,
+                                noiseSuppression: true,
+                                autoGainControl: true,
+                                latency: 0,
+                                channelCount: 2,
+                                sampleRate: 48000
+                            }
+                        });
+                        console.log('first headset earpiece', stream);
+                    } catch (error) {
+                        console.log('Failed to use Headset earpiece, falling back to default device');
+                    }
+                }
+
+                // if (!stream) {
+                    // 如果Headset earpiece不可用或出错，使用默认设备
+                stream = await navigator.mediaDevices.getUserMedia({
                     audio: {
-                        deviceId: { exact: selectedMicId },
+                        deviceId: { ideal: 'default' },
                         echoCancellation: true,
                         noiseSuppression: true,
                         autoGainControl: true,
                         latency: 0,
                         channelCount: 2,
                         sampleRate: 48000
-                    } 
+                    }
                 });
+                console.log('second default', stream);
+                // }
 
                 const audioTrack = stream?.getAudioTracks()[0];
                 micId = audioTrack.deviceId;
@@ -327,7 +349,6 @@
             isPlaying = false;
         }
         
-        // 在适当的时候调用清理函数，比如页面卸载时
         window.addEventListener('unload', cleanup);
     </script>
 </body>
