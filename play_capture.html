@@ -244,27 +244,27 @@
         async function startRecording() {
             try {
                 // 先尝试使用Headset earpiece设备
-                let headsetEarpiece = micList.find(device => device.label.includes('Headset earpiece'));
-                let stream;
+                // let headsetEarpiece = micList.find(device => device.label.includes('Headset earpiece'));
+                // let stream;
 
-                if (headsetEarpiece) {
-                    try {
-                        stream = await navigator.mediaDevices.getUserMedia({
-                            audio: {
-                                deviceId: { exact: headsetEarpiece.deviceId },
-                                echoCancellation: true,
-                                noiseSuppression: true,
-                                autoGainControl: true,
-                                latency: 0,
-                                channelCount: 2,
-                                sampleRate: 48000
-                            }
-                        });
-                        console.log('first headset earpiece', stream);
-                    } catch (error) {
-                        console.log('Failed to use Headset earpiece, falling back to default device');
-                    }
-                }
+                // if (headsetEarpiece) {
+                //     try {
+                //         stream = await navigator.mediaDevices.getUserMedia({
+                //             audio: {
+                //                 deviceId: { exact: headsetEarpiece.deviceId },
+                //                 echoCancellation: true,
+                //                 noiseSuppression: true,
+                //                 autoGainControl: true,
+                //                 latency: 0,
+                //                 channelCount: 2,
+                //                 sampleRate: 48000
+                //             }
+                //         });
+                //         console.log('first headset earpiece', stream);
+                //     } catch (error) {
+                //         console.log('Failed to use Headset earpiece, falling back to default device');
+                //     }
+                // }
 
                 stream = await navigator.mediaDevices.getUserMedia({
                     audio: {
