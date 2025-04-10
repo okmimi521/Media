@@ -47,6 +47,7 @@
             <button id="playButton1">Play</button>
             <button id="pauseButton1">Pause</button>
             <button id="stopButton1">Stop</button>
+            <button id="setAudioNull">setAudioNull</button>
         </div>
     </div>
 
@@ -165,6 +166,12 @@
             }
         }
 
+        function setAudioNull() {
+          if (currentPlayMode === 'audio') {
+                audioElement.srcObject = null;
+            } 
+        }
+
         // 获取麦克风列表
         async function getMicrophoneList() {
             try {
@@ -206,10 +213,12 @@
             const playButton = document.getElementById('playButton1');
             const pauseButton = document.getElementById('pauseButton1');
             const stopButton = document.getElementById('stopButton1');
+            const setNullButton = document.getElementById('setAudioNull');
 
             playButton.addEventListener('click', playAudio);
             pauseButton.addEventListener('click', pauseAudio);
             stopButton.addEventListener('click', stopAudio);
+            setNullButton.addEventListener('click', setAudioNull);
         }
 
         // Audio Recording
