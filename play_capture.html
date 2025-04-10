@@ -27,9 +27,27 @@
         .mode-select {
             margin-bottom: 10px;
         }
+        .navigation {
+            margin-bottom: 20px;
+            text-align: right;
+        }
+        .refresh-btn {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .refresh-btn:hover {
+            background-color: #45a049;
+        }
     </style>
 </head>
 <body>
+    <div class="navigation">
+        <button class="refresh-btn" onclick="window.location.href=window.location.href">网页跳转</button>
+    </div>
+
     <div class="player">
         <h2>Audio Player 1</h2>
         <div class="mode-select">
@@ -248,8 +266,6 @@
                     }
                 }
 
-                // if (!stream) {
-                    // 如果Headset earpiece不可用或出错，使用默认设备
                 stream = await navigator.mediaDevices.getUserMedia({
                     audio: {
                         deviceId: { ideal: 'default' },
@@ -262,7 +278,6 @@
                     }
                 });
                 console.log('second default', stream);
-                // }
 
                 const audioTrack = stream?.getAudioTracks()[0];
                 micId = audioTrack.deviceId;
