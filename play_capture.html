@@ -48,6 +48,7 @@
             <button id="pauseButton1">Pause</button>
             <button id="stopButton1">Stop</button>
             <button id="setAudioNull">setAudioNull</button>
+            <button id="destroyAudioTag">destroyAudioTag</button>
         </div>
     </div>
 
@@ -74,7 +75,7 @@
         let currentPlayMode = 'audio'; // 默认使用 audio 标签播放
 
         const playModeSelect = document.getElementById('playMode');
-        const audioElement = document.getElementById('audioPlayer1');
+        let audioElement = document.getElementById('audioPlayer1');
 
         // 监听播放模式变化
         playModeSelect.addEventListener('change', function(e) {
@@ -109,6 +110,10 @@
         // 播放音频
         async function playAudio() {
             if (currentPlayMode === 'audio') {
+                if(audioElement == null) {
+                  audioElement = document.createElement('audio');
+                  audioElement.src = 'test3.mp3';
+                }
                 audioElement.play();
                 isPlaying = true;
             } else {
@@ -168,10 +173,18 @@
 
         function setAudioNull() {
           if (currentPlayMode === 'audio') {
-                audioElement.srcObject = null;
+                audioElement.src = null;
                 audioElement.load();
             } 
         }
+        
+        function destroyAudio() {
+          if (currentPlayMode === 'audio') {
+                audioElement.remove();
+                audioElement = null;
+            } 
+        }
+
 
         // 获取麦克风列表
         async function getMicrophoneList() {
@@ -215,11 +228,13 @@
             const pauseButton = document.getElementById('pauseButton1');
             const stopButton = document.getElementById('stopButton1');
             const setNullButton = document.getElementById('setAudioNull');
+            const destroyAudioButton = document.getElementById('destroyAudioTag');
 
             playButton.addEventListener('click', playAudio);
             pauseButton.addEventListener('click', pauseAudio);
             stopButton.addEventListener('click', stopAudio);
             setNullButton.addEventListener('click', setAudioNull);
+            destroyAudioButton.addEventListener('click', destroyAudio);
         }
 
         // Audio Recording
