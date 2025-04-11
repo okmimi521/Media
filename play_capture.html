@@ -39,8 +39,8 @@
                 <option value="context">AudioContext</option>
             </select>
         </div>
-        <audio id="audioPlayer1">
-            <source type="audio/mpeg">
+        <audio id="audioPlayer1" loop>
+            <source src="test3.mp3" type="audio/mpeg">
             Your browser does not support the audio element.
         </audio>
         <audio id="audioPlayer2" loop>
@@ -74,7 +74,6 @@
         let micId;
         let micLabel;
         let audioContext;
-        let audioContextForAudioTag;
         let audioBuffer;
         let sourceNode;
         let isPlaying = false;
@@ -103,15 +102,6 @@
             }
         }
 
-        function createAudioContextForAudioTag() {
-            if (!audioContextForAudioTag) {
-                audioContextForAudioTag = new AudioContext({
-                    latencyHint: 'balanced',
-                    sampleRate: 48000
-                });
-            }
-        }
-
         // 加载音频文件
         // async function loadAudio(url) {
         //     try {
@@ -126,10 +116,6 @@
         // 播放音频
         async function playAudio() {
             if (currentPlayMode === 'audio') {
-                if (!audioContextForAudioTag) {
-                    createAudioContextForAudioTag();
-                    await loadAudioFile('test3.mp3');
-                }
                 audioElement.play();
                 isPlaying = true;
             } 
@@ -160,7 +146,6 @@
             if (currentPlayMode === 'audio') {
                 audioElement.pause();
                 audioElement.currentTime = 0;
-                stopStreamedAudio();
                 isPlaying = false;
             } else {
                 if (sourceNode) {
@@ -184,55 +169,6 @@
                 }
             }
         }
-
-        function stopStreamedAudio() {
-          const stream = audioElement.srcObject;
-          const tracks = stream.getTracks();
-
-          tracks.forEach((track) => {
-            track.stop();
-          });
-
-          audioElement.srcObject = null;
-        }
-
-
-      async function loadAudioFile(filePath) {
-          try {
-              // 获取音频文件
-              const response = await fetch(filePath);
-              const arrayBuffer = await response.arrayBuffer();
-
-              // 创建音频流
-              const stream = await this.createAudioStream(arrayBuffer);
-              
-              // 设置 srcObject
-              audioElement.srcObject = stream;
-
-          } catch (error) {
-              console.error('Error loading audio:', error);
-          }
-      }
-        
-      async function createAudioStream(arrayBuffer) {
-          // 解码音频数据
-          const audioBuffer = await audioContextForAudioTag.decodeAudioData(arrayBuffer);
-          
-          // 创建媒体流目标节点
-          const destination = audioContextForAudioTag.createMediaStreamDestination();
-          
-          // 创建缓冲源节点
-          const source = audioContextForAudioTag.createBufferSource();
-          source.buffer = audioBuffer;
-          
-          // 连接节点
-          source.connect(destination);
-          
-          // 开始播放
-          source.start(0);
-          
-          return destination.stream;
-      }
 
         // 获取麦克风列表
         async function getMicrophoneList() {
@@ -284,7 +220,6 @@
             stopButton.addEventListener('click', stopAudio);
             playButton2.addEventListener('click', playAudio2);
             stopButton2.addEventListener('click', stopAudio2);
-
         }
 
         // Audio Recording
