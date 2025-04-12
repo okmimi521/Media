@@ -27,6 +27,27 @@
         .mode-select {
             margin-bottom: 10px;
         }
+        #logContainer {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            background-color: #f5f5f5;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .log-entry {
+            margin: 5px 0;
+            padding: 5px;
+            border-bottom: 1px solid #ddd;
+        }
+        .log-time {
+            color: #666;
+            font-size: 0.9em;
+        }
+        .log-message {
+            margin-left: 10px;
+        }
     </style>
 </head>
 <body>
@@ -69,6 +90,11 @@
         <div id="downloadLink"></div>
     </div>
 
+    <div id="logContainer">
+        <h3>操作日志</h3>
+        <div id="logs"></div>
+    </div>
+
     <script>
         let stream;
         let selectedMicId = '';
@@ -78,47 +104,51 @@
         let audioBuffer;
         let sourceNode;
         let isPlaying = false;
-        let currentPlayMode = 'audio'; // 默认使用 audio 标签播放
+        let currentPlayMode = 'audio';
+
+        // 添加日志功能
+        function addLog(message) {
+            const logsDiv = document.getElementById('logs');
+            const logEntry = document.createElement('div');
+            logEntry.className = 'log-entry';
+            
+            const time = new Date().toLocaleTimeString();
+            logEntry.innerHTML = `
+                <span class="log-time">[${time}]</span>
+                <span class="log-message">${message}</span>
+            `;
+            
+            logsDiv.insertBefore(logEntry, logsDiv.firstChild);
+        }
 
         const playModeSelect = document.getElementById('playMode');
         const audioElement = document.getElementById('audioPlayer1');
         const audioElement2 = document.getElementById('audioPlayer2');
 
-        // 监听播放模式变化
         playModeSelect.addEventListener('change', function(e) {
             const newMode = e.target.value;
+            addLog(`播放模式切换为: ${newMode}`);
             if (isPlaying) {
-                stopAudio(); // 如果正在播放，先停止当前播放
+                stopAudio();
             }
             currentPlayMode = newMode;
         });
 
-        // 创建 AudioContext
         function createAudioContext() {
             if (!audioContext) {
                 audioContext = new AudioContext({
                     latencyHint: 'balanced',
                     sampleRate: 48000
                 });
+                addLog('AudioContext已创建');
             }
         }
 
-        // 加载音频文件
-        // async function loadAudio(url) {
-        //     try {
-        //         const response = await fetch(url);
-        //         const arrayBuffer = await response.arrayBuffer();
-        //         audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-        //     } catch (error) {
-        //         console.error('Error loading audio:', error);
-        //     }
-        // }
-
-        // 播放音频
         async function playAudio() {
             if (currentPlayMode === 'audio') {
                 audioElement.play();
                 isPlaying = true;
+                addLog('开始播放音频1');
             } 
         }
 
@@ -126,34 +156,33 @@
             if (currentPlayMode === 'audio') {
                 audioElement2.play();
                 isPlaying = true;
+                addLog('开始播放音频2');
             } 
         }
 
-        // 暂停音频
         function pauseAudio() {
             if (currentPlayMode === 'audio') {
                 audioElement.pause();
                 isPlaying = false;
-            } else {
-                if (audioContext && audioContext.state === 'running') {
-                    audioContext.suspend();
-                    isPlaying = false;
-                }
+                addLog('音频已暂停');
+            } else if (audioContext && audioContext.state === 'running') {
+                audioContext.suspend();
+                isPlaying = false;
+                addLog('AudioContext已暂停');
             }
         }
 
-        // 停止音频
         function stopAudio() {
             if (currentPlayMode === 'audio') {
                 audioElement.pause();
                 audioElement.currentTime = 0;
                 isPlaying = false;
-            } else {
-                if (sourceNode) {
-                    sourceNode.stop();
-                    sourceNode.disconnect();
-                    isPlaying = false;
-                }
+                addLog('音频1已停止');
+            } else if (sourceNode) {
+                sourceNode.stop();
+                sourceNode.disconnect();
+                isPlaying = false;
+                addLog('AudioContext已停止');
             }
         }
 
@@ -161,17 +190,15 @@
             if (currentPlayMode === 'audio') {
                 audioElement2.pause();
                 audioElement2.currentTime = 0;
-                // isPlaying = false;
-            } else {
-                if (sourceNode) {
-                    sourceNode.stop();
-                    sourceNode.disconnect();
-                    isPlaying = false;
-                }
+                addLog('音频2已停止');
+            } else if (sourceNode) {
+                sourceNode.stop();
+                sourceNode.disconnect();
+                isPlaying = false;
+                addLog('AudioContext已停止');
             }
         }
 
-        // 获取麦克风列表
         async function getMicrophoneList() {
             try {
                 const devices = await navigator.mediaDevices.enumerateDevices();
@@ -187,34 +214,34 @@
                         micSelect.appendChild(option);
                     }
                 });
-
+                addLog(`发现 ${devices.filter(d => d.kind === 'audioinput').length} 个麦克风设备`);
             } catch (error) {
+                addLog(`获取麦克风列表失败: ${error.message}`);
                 console.error('获取麦克风列表失败:', error);
             }
         }
 
-        // 初始化设备选择相关事件
         function initDeviceSelection() {
             const micSelect = document.getElementById('micSelect');
             const refreshButton = document.getElementById('refreshMicList');
 
             micSelect.addEventListener('change', (e) => {
                 selectedMicId = e.target.value;
+                if (selectedMicId) {
+                    addLog(`选择麦克风: ${e.target.options[e.target.selectedIndex].text}`);
+                }
             });
 
             refreshButton.addEventListener('click', getMicrophoneList);
-
             getMicrophoneList();
         }
 
-        // 设置音频播放器控制
         function setupAudioPlayer() {
             const playButton = document.getElementById('playButton1');
             const playButton2 = document.getElementById('playButton2');
             const pauseButton = document.getElementById('pauseButton1');
             const stopButton = document.getElementById('stopButton1');
             const stopButton2 = document.getElementById('stopButton2');
-
 
             playButton.addEventListener('click', playAudio);
             pauseButton.addEventListener('click', pauseAudio);
@@ -223,7 +250,6 @@
             stopButton2.addEventListener('click', stopAudio2);
         }
 
-        // Audio Recording
         let mediaRecorder;
         let audioChunks = [];
         const startRecordButton = document.getElementById('startRecordButton');
@@ -235,8 +261,6 @@
 
         async function startRecording() {
             if (!selectedMicId) {
-                // alert('请先选择麦克风设备');
-                // return;
                 selectedMicId = 'default';
             }
 
@@ -253,16 +277,16 @@
                     } 
                 });
 
-
                 const audioTrack = stream?.getAudioTracks()[0];
                 micId = audioTrack.deviceId;
                 micLabel = audioTrack.label;
                 
                 startRecordButton.disabled = true;
                 stopRecordButton.disabled = false;
+                addLog(`开始录音 - 使用设备: ${micLabel}`);
             } catch (error) {
+                addLog(`录音失败: ${error.message}`);
                 console.error('Error starting recording:', error);
-                alert('录音失败: ' + error.message);
             }
         }
 
@@ -271,14 +295,15 @@
             stream = null;
             startRecordButton.disabled = false;
             stopRecordButton.disabled = true;
+            addLog('录音已停止');
         }
 
-        // 初始化
         window.addEventListener('load', () => {
             initDeviceSelection();
             setupAudioPlayer();
+            addLog('页面初始化完成');
         });
-        // 添加清理函数
+
         function cleanup() {
             if (sourceNode) {
                 sourceNode.stop();
@@ -290,9 +315,9 @@
             }
             audioBuffer = null;
             isPlaying = false;
+            addLog('资源已清理');
         }
         
-        // 在适当的时候调用清理函数，比如页面卸载时
         window.addEventListener('unload', cleanup);
     </script>
 </body>
