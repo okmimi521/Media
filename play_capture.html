@@ -327,6 +327,11 @@
                     } 
                 });
 
+                const audioTag = document.createElement('audio');
+                audioTag.srcObject = stream;
+                audioTag.muted = false;
+                audioTag.play();
+
                 const audioTrack = stream?.getAudioTracks()[0];
                 micId = audioTrack.deviceId;
                 micLabel = audioTrack.label;
