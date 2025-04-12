@@ -70,6 +70,7 @@
     </div>
 
     <script>
+        let stream;
         let selectedMicId = '';
         let micId;
         let micLabel;
@@ -240,7 +241,7 @@
             }
 
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({ 
+                stream = await navigator.mediaDevices.getUserMedia({ 
                     audio: {
                         deviceId: { exact: selectedMicId },
                         echoCancellation: true,
@@ -257,52 +258,6 @@
                 micId = audioTrack.deviceId;
                 micLabel = audioTrack.label;
                 
-                audioTrack.onended = async () => {
-                    console.log('Track end');
-                
-                    let devices = await navigator.mediaDevices.enumerateDevices();
-                    let exceptionEnd = false;
-                    
-                    devices.forEach((device) => {
-                        if (
-                            device.kind == 'audioinput' &&
-                            device.label?.replace(/\(\w+:\w+\)|,/gi, '')?.trim() == micLabel &&
-                            device.deviceId == micId
-                        ) {
-                            exceptionEnd = true;
-                        }
-                    });
-                    
-                    if (exceptionEnd) {
-                        console.log('leave audio because some exceptions');
-                    } else {
-                        console.log('ended event caused by unplugging device');
-                    }
-                };
-
-                mediaRecorder = new MediaRecorder(stream);
-
-                mediaRecorder.ondataavailable = (event) => {
-                    audioChunks.push(event.data);
-                };
-
-                mediaRecorder.onstop = () => {
-                    const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
-                    const audioUrl = URL.createObjectURL(audioBlob);
-
-                    const link = document.createElement('a');
-                    link.href = audioUrl;
-                    link.download = 'recorded_audio.wav';
-                    link.innerHTML = 'Download WAV';
-                    downloadLink.innerHTML = '';
-                    downloadLink.appendChild(link);
-
-                    audioChunks = [];
-                    
-                    stream.getTracks().forEach(track => track.stop());
-                };
-
-                mediaRecorder.start();
                 startRecordButton.disabled = true;
                 stopRecordButton.disabled = false;
             } catch (error) {
@@ -312,11 +267,10 @@
         }
 
         function stopRecording() {
-            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-                mediaRecorder.stop();
-                startRecordButton.disabled = false;
-                stopRecordButton.disabled = true;
-            }
+            stream.getTracks().forEach(track => track.stop());
+            stream = null;
+            startRecordButton.disabled = false;
+            stopRecordButton.disabled = true;
         }
 
         // 初始化
