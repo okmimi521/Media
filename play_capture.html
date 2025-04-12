@@ -76,6 +76,9 @@
             <button id="pauseButton2">Pause2</button>
             <button id="stopButton2">Stop2</button>
         </div>
+        <div class = "audioControls">
+            <button id="autoPlayButton">Test Auto Play</button>
+        </div>
     </div>
 
     <div class="recorder">
@@ -199,6 +202,43 @@
             }
         }
 
+        function autoPlay() {
+            return new Promise((resolve, reject) => {
+                //create a wav audio(16K, 16bits, 0.01s, silence audio)
+                let audioArrayBuffer = new ArrayBuffer(684);
+                let audioInt32 = new Uint32Array(audioArrayBuffer);
+                let header = [
+                  1179011410, 676, 1163280727, 544501094, 16, 65539, 16000, 64000,
+                  2097156, 1635017060, 640,
+                ];
+                audioInt32.set(header, 0);
+
+                let blob = new Blob([audioInt32], { type: 'audio/wav' });
+                let blobURL = window.URL.createObjectURL(blob);
+                let audio = new Audio(blobURL);
+
+                audio.addEventListener('canplaythrough', () => {
+                  audio
+                    .play()
+                    .then(() => {
+                      resolve(true);
+                    })
+                    .catch((ex) => {
+                      globalTracingLogger.log('Unable to auto play audio', ex);
+                      reject(ex);
+                    })
+                    .finally(() => {
+                      window.URL.revokeObjectURL(blobURL);
+                    });
+                });
+
+                /** iphone safari need this to trigger canplaythrouth event */
+                if (audio.load) {
+                  audio.load();
+                }
+              });
+        }
+
         async function getMicrophoneList() {
             try {
                 const devices = await navigator.mediaDevices.enumerateDevices();
@@ -242,12 +282,15 @@
             const pauseButton = document.getElementById('pauseButton1');
             const stopButton = document.getElementById('stopButton1');
             const stopButton2 = document.getElementById('stopButton2');
+            const autoPlayButton = document.getElementById('autoPlayButton');
+            
 
             playButton.addEventListener('click', playAudio);
             pauseButton.addEventListener('click', pauseAudio);
             stopButton.addEventListener('click', stopAudio);
             playButton2.addEventListener('click', playAudio2);
             stopButton2.addEventListener('click', stopAudio2);
+            autoPlayButton.addEventListener('click', autoPlay);
         }
 
         let mediaRecorder;
