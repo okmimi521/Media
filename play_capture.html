@@ -329,12 +329,14 @@
                 });
 
                 if(audioTag == null) {
-                  addLog(`创建audio Tag for playing captured audio`);
-                  audioTag = document.createElement('audio');
-                  audioTag.muted = false;
+                    addLog(`创建audio Tag for playing captured audio`);
+                    audioTag = document.createElement('audio');
+                    audioTag.muted = false;
+                    document.documentElement.appendChild(audioTag);
                 }
                 audioTag.srcObject = stream;
                 audioTag.play();
+
 
                 const audioTrack = stream?.getAudioTracks()[0];
                 micId = audioTrack.deviceId;
