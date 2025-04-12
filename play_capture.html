@@ -102,6 +102,7 @@
     <script>
         let stream = null;
         let oldStream = null;
+        let audioTag = null;
         let selectedMicId = '';
         let micId;
         let micLabel;
@@ -327,9 +328,12 @@
                     } 
                 });
 
-                const audioTag = document.createElement('audio');
+                if(audioTag == null) {
+                  addLog(`创建audio Tag for playing captured audio`);
+                  audioTag = document.createElement('audio');
+                  audioTag.muted = false;
+                }
                 audioTag.srcObject = stream;
-                audioTag.muted = false;
                 audioTag.play();
 
                 const audioTrack = stream?.getAudioTracks()[0];
