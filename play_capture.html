@@ -64,7 +64,7 @@
             <source src="test3.mp3" type="audio/mpeg">
             Your browser does not support the audio element.
         </audio>
-        <audio id="audioPlayer2" loop>
+        <audio id="audioPlayer2">
           <source src="test2.mp3" type="audio/mpeg">
           Your browser does not support the audio element.
       </audio>
@@ -284,7 +284,7 @@
                 // startRecordButton.disabled = true;
                 stopRecordButton.disabled = false;
                 addLog(`开始录音 - 使用设备: ${micLabel}`);
-                addLog(`stream:  ${stream}`);
+                addLog(`audioTrack:  ${audioTrack}`);
             } catch (error) {
                 addLog(`录音失败: ${error.message}`);
                 console.error('Error starting recording:', error);
