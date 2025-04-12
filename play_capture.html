@@ -281,9 +281,10 @@
                 micId = audioTrack.deviceId;
                 micLabel = audioTrack.label;
                 
-                startRecordButton.disabled = true;
+                // startRecordButton.disabled = true;
                 stopRecordButton.disabled = false;
                 addLog(`开始录音 - 使用设备: ${micLabel}`);
+                addLog(`stream:  ${stream}`);
             } catch (error) {
                 addLog(`录音失败: ${error.message}`);
                 console.error('Error starting recording:', error);
