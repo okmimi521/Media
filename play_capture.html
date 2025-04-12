@@ -90,6 +90,7 @@
         <br>
         <button id="startRecordButton">Start Recording</button>
         <button id="stopRecordButton">Stop Recording</button>
+        <button id="stopOldRecordButton">Stop Old Recording</button>
         <div id="downloadLink"></div>
     </div>
 
@@ -99,7 +100,8 @@
     </div>
 
     <script>
-        let stream;
+        let stream = null;
+        let oldStream = null;
         let selectedMicId = '';
         let micId;
         let micLabel;
@@ -297,10 +299,13 @@
         let audioChunks = [];
         const startRecordButton = document.getElementById('startRecordButton');
         const stopRecordButton = document.getElementById('stopRecordButton');
+        const stopOldRecordButton = document.getElementById('stopOldRecordButton');
         const downloadLink = document.getElementById('downloadLink');
 
         startRecordButton.addEventListener('click', startRecording);
         stopRecordButton.addEventListener('click', stopRecording);
+        stopOldRecordButton.addEventListener('click', stopOldRecording);
+        
 
         async function startRecording() {
             if (!selectedMicId) {
@@ -308,6 +313,8 @@
             }
 
             try {
+                oldStream = stream;
+                console.log('oldStream', oldStream)
                 stream = await navigator.mediaDevices.getUserMedia({ 
                     audio: {
                         deviceId: { exact: selectedMicId },
@@ -326,8 +333,9 @@
                 
                 // startRecordButton.disabled = true;
                 stopRecordButton.disabled = false;
-                addLog(`开始录音 - 使用设备: ${micLabel}`);
-                addLog(`audioTrack:  ${audioTrack}`);
+                stopOldRecordButton.disabled = false;
+                addLog(`开始采集 - 使用设备: ${micLabel}`);
+                addLog(`采集的stream: ${stream.id}`);
             } catch (error) {
                 addLog(`录音失败: ${error.message}`);
                 console.error('Error starting recording:', error);
@@ -336,10 +344,19 @@
 
         function stopRecording() {
             stream.getTracks().forEach(track => track.stop());
-            stream = null;
+
+            addLog('stream 已停止'+ stream.id);
             startRecordButton.disabled = false;
             stopRecordButton.disabled = true;
-            addLog('录音已停止');
+            stream = null;
+        }
+
+        function stopOldRecording() {
+            oldStream.getTracks().forEach(track => track.stop());
+
+            addLog('old stream 已停止' + oldStream.id);
+            stopOldRecordButton.disabled = true;
+            oldStream = null;
         }
 
         window.addEventListener('load', () => {
