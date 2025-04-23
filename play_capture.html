@@ -76,6 +76,7 @@
                 <option value="test1.mp3">test1.mp3</option>
                 <option value="test2.mp3">test2.mp3</option>
                 <option value="test3.mp3">test3.mp3</option>
+                <option value="test4.wav">test4.wav</option>
             </select>
             <button id="createAudioTagButton">Create Audio Tag</button>
         </div>
@@ -99,6 +100,7 @@
         <button id="startRecordButton">Start Recording</button>
         <button id="stopRecordButton">Stop Recording</button>
         <button id="stopOldRecordButton">Stop Old Recording</button>
+        <button id="faceRecordButton">Face Record</button>
         <div id="downloadLink"></div>
     </div>
 
@@ -274,7 +276,7 @@
                 stream = await navigator.mediaDevices.getUserMedia({ 
                     audio: {
                         deviceId: { exact: selectedMicId },
-                        echoCancellation: false,
+                        echoCancellation: true,
                         noiseSuppression: true,
                         autoGainControl: true,
                         latency: 0,
@@ -312,6 +314,22 @@
             oldStream = null;
         }
 
+        function faceRecording() {
+          const audioContext = new AudioContext();
+          const oscillator = audioContext.createOscillator();
+          oscillator.type = 'sine';
+          oscillator.frequency.setValueAtTime(440, audioContext.currentTime); // A4 FF17
+          // 创建一个 MediastreamDestination：看起来像是 mic 采集出来的流
+          const destination = audioContext.createMediaStreamDestination();
+          // 连接方点
+          oscillator.connect(destination);
+          // oscillator.connect(audioContext.destination);
+          oscillator.start();
+          // 这就是一个假的麦克风 Mediastream，可以传给 WebRTC 或其他 API
+          const fakeMicStream = destination.stream;
+          
+        }
+
         function cleanup() {
             if (sourceNode) {
                 sourceNode.stop();
@@ -333,9 +351,8 @@
             document.getElementById('startRecordButton').addEventListener('click', startRecording);
             document.getElementById('stopRecordButton').addEventListener('click', stopRecording);
             document.getElementById('stopOldRecordButton').addEventListener('click', stopOldRecording);
-            addLog('页面初始化完成');
+            document.getElementById('faceRecordButton').addEventListener('click', faceRecording);
         });
-        
         window.addEventListener('unload', cleanup);
     </script>
 </body>
