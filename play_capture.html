@@ -100,7 +100,7 @@
         <button id="startRecordButton">Start Recording</button>
         <button id="stopRecordButton">Stop Recording</button>
         <button id="stopOldRecordButton">Stop Old Recording</button>
-        <button id="faceRecordButton">Face Record</button>
+<!--         <button id="faceRecordButton">Face Record</button> -->
         <div id="downloadLink"></div>
     </div>
 
@@ -314,21 +314,21 @@
             oldStream = null;
         }
 
-        function faceRecording() {
-          const audioContext = new AudioContext();
-          const oscillator = audioContext.createOscillator();
-          oscillator.type = 'sine';
-          oscillator.frequency.setValueAtTime(440, audioContext.currentTime); // A4 FF17
-          // 创建一个 MediastreamDestination：看起来像是 mic 采集出来的流
-          const destination = audioContext.createMediaStreamDestination();
-          // 连接方点
-          oscillator.connect(destination);
-          // oscillator.connect(audioContext.destination);
-          oscillator.start();
-          // 这就是一个假的麦克风 Mediastream，可以传给 WebRTC 或其他 API
-          const fakeMicStream = destination.stream;
+        // function faceRecording() {
+        //   const audioContext = new AudioContext();
+        //   const oscillator = audioContext.createOscillator();
+        //   oscillator.type = 'sine';
+        //   oscillator.frequency.setValueAtTime(440, audioContext.currentTime); // A4 FF17
+        //   // 创建一个 MediastreamDestination：看起来像是 mic 采集出来的流
+        //   const destination = audioContext.createMediaStreamDestination();
+        //   // 连接方点
+        //   oscillator.connect(destination);
+        //   // oscillator.connect(audioContext.destination);
+        //   oscillator.start();
+        //   // 这就是一个假的麦克风 Mediastream，可以传给 WebRTC 或其他 API
+        //   const fakeMicStream = destination.stream;
           
-        }
+        // }
 
         function cleanup() {
             if (sourceNode) {
@@ -351,7 +351,7 @@
             document.getElementById('startRecordButton').addEventListener('click', startRecording);
             document.getElementById('stopRecordButton').addEventListener('click', stopRecording);
             document.getElementById('stopOldRecordButton').addEventListener('click', stopOldRecording);
-            document.getElementById('faceRecordButton').addEventListener('click', faceRecording);
+            // document.getElementById('faceRecordButton').addEventListener('click', faceRecording);
         });
         window.addEventListener('unload', cleanup);
     </script>
