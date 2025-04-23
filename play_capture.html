@@ -48,11 +48,21 @@
         .log-message {
             margin-left: 10px;
         }
+        #audioTagsContainer {
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px dashed #ccc;
+        }
+        .audio-tag-controls {
+            margin: 10px 0;
+            padding: 5px;
+            border-bottom: 1px solid #eee;
+        }
     </style>
 </head>
 <body>
     <div class="player">
-        <h2>Audio Player 1</h2>
+        <h2>Audio Player</h2>
         <div class="mode-select">
             <label>播放模式：</label>
             <select id="playMode">
@@ -60,23 +70,21 @@
                 <option value="context">AudioContext</option>
             </select>
         </div>
-        <audio id="audioPlayer1" loop>
-            <source src="test3.mp3" type="audio/mpeg">
-            Your browser does not support the audio element.
-        </audio>
-        <audio id="audioPlayer2" loop>
-          <source src="test2.mp3" type="audio/mpeg">
-          Your browser does not support the audio element.
-      </audio>
+
         <div class="audioControls">
-            <button id="playButton1">Play1</button>
-            <button id="pauseButton1">Pause1</button>
-            <button id="stopButton1">Stop1</button>
-            <button id="playButton2">Play2</button>
-            <button id="pauseButton2">Pause2</button>
-            <button id="stopButton2">Stop2</button>
+            <select id="audioFileSelect">
+                <option value="test1.mp3">test1.mp3</option>
+                <option value="test2.mp3">test2.mp3</option>
+                <option value="test3.mp3">test3.mp3</option>
+            </select>
+            <button id="createAudioTagButton">Create Audio Tag</button>
         </div>
-        <div class = "audioControls">
+
+        <div id="audioTagsContainer">
+            <!-- Audio tags will be added here -->
+        </div>
+
+        <div class="audioControls">
             <button id="autoPlayButton">Test Auto Play</button>
         </div>
     </div>
@@ -102,7 +110,6 @@
     <script>
         let stream = null;
         let oldStream = null;
-        let audioTag = null;
         let selectedMicId = '';
         let micId;
         let micLabel;
@@ -111,8 +118,8 @@
         let sourceNode;
         let isPlaying = false;
         let currentPlayMode = 'audio';
+        let audioTagCounter = 0;
 
-        // 添加日志功能
         function addLog(message) {
             const logsDiv = document.getElementById('logs');
             const logEntry = document.createElement('div');
@@ -127,92 +134,72 @@
             logsDiv.insertBefore(logEntry, logsDiv.firstChild);
         }
 
-        const playModeSelect = document.getElementById('playMode');
-        const audioElement = document.getElementById('audioPlayer1');
-        const audioElement2 = document.getElementById('audioPlayer2');
-
-        playModeSelect.addEventListener('change', function(e) {
-            const newMode = e.target.value;
-            addLog(`播放模式切换为: ${newMode}`);
-            if (isPlaying) {
-                stopAudio();
-            }
-            currentPlayMode = newMode;
-        });
-
-        function createAudioContext() {
-            if (!audioContext) {
-                audioContext = new AudioContext({
-                    latencyHint: 'balanced',
-                    sampleRate: 48000
-                });
-                addLog('AudioContext已创建');
-            }
-        }
-
-        async function playAudio() {
-            if (currentPlayMode === 'audio') {
-                audioElement.play();
-                isPlaying = true;
-                addLog('开始播放音频1');
-            } 
-        }
-
-        async function playAudio2() {
-            if (currentPlayMode === 'audio') {
-                audioElement2.play();
-                isPlaying = true;
-                addLog('开始播放音频2');
-            } 
-        }
-
-        function pauseAudio() {
-            if (currentPlayMode === 'audio') {
-                audioElement.pause();
-                isPlaying = false;
-                addLog('音频已暂停');
-            } else if (audioContext && audioContext.state === 'running') {
-                audioContext.suspend();
-                isPlaying = false;
-                addLog('AudioContext已暂停');
-            }
-        }
-
-        function stopAudio() {
-            if (currentPlayMode === 'audio') {
-                audioElement.pause();
-                audioElement.currentTime = 0;
-                isPlaying = false;
-                addLog('音频1已停止');
-            } else if (sourceNode) {
-                sourceNode.stop();
-                sourceNode.disconnect();
-                isPlaying = false;
-                addLog('AudioContext已停止');
-            }
-        }
-
-        function stopAudio2() {
-            if (currentPlayMode === 'audio') {
-                audioElement2.pause();
-                audioElement2.currentTime = 0;
-                addLog('音频2已停止');
-            } else if (sourceNode) {
-                sourceNode.stop();
-                sourceNode.disconnect();
-                isPlaying = false;
-                addLog('AudioContext已停止');
-            }
+        function createAudioTag() {
+            const audioFileSelect = document.getElementById('audioFileSelect');
+            const selectedFile = audioFileSelect.value;
+            audioTagCounter++;
+            
+            const containerDiv = document.createElement('div');
+            containerDiv.className = 'audio-tag-controls';
+            containerDiv.id = `audioContainer${audioTagCounter}`;
+            
+            let audio = document.createElement('audio');
+            audio.id = `audioPlayer${audioTagCounter}`;
+            audio.loop = true;
+            // audio.src = selectedFile;
+            
+            const playButton = document.createElement('button');
+            playButton.textContent = `Play ${audioTagCounter}`;
+            playButton.onclick = () => {
+              if(audio.src == null || audio.src == "") {
+                audio.src = selectedFile;
+              }
+              audio.play()
+            };
+            
+            // const pauseButton = document.createElement('button');
+            // pauseButton.textContent = `Pause ${audioTagCounter}`;
+            // pauseButton.onclick = () => audio.pause();
+            
+            const stopButton = document.createElement('button');
+            stopButton.textContent = `Stop ${audioTagCounter}`;
+            stopButton.onclick = () => {
+                audio.pause();
+                audio.currentTime = 0;
+                audio.src = '';
+                // audio.load();
+                addLog(`已停止 Audio Tag ${audioTagCounter}`);
+            };
+            
+            const removeButton = document.createElement('button');
+            removeButton.textContent = `Remove ${audioTagCounter}`;
+            removeButton.onclick = () => {
+                containerDiv.remove();
+                audio.currentTime = 0;
+                audio.src = '';
+                audio.load();
+                audio.remove();
+                audio = null;
+                addLog(`已移除 Audio Tag ${audioTagCounter}`);
+            };
+            
+            containerDiv.appendChild(audio);
+            containerDiv.appendChild(playButton);
+            // containerDiv.appendChild(pauseButton);
+            containerDiv.appendChild(stopButton);
+            containerDiv.appendChild(removeButton);
+            
+            document.getElementById('audioTagsContainer').appendChild(containerDiv);
+            addLog(`已创建新的 Audio Tag ${audioTagCounter} (${selectedFile})`);
         }
 
         function autoPlay() {
             return new Promise((resolve, reject) => {
-                //create a wav audio(16K, 16bits, 0.01s, silence audio)
                 let audioArrayBuffer = new ArrayBuffer(684);
                 let audioInt32 = new Uint32Array(audioArrayBuffer);
                 let header = [
-                  1179011410, 676, 1163280727, 544501094, 16, 65539, 16000, 64000,
-                  2097156, 1635017060, 640,
+                    1179011410, 676, 1163280727, 544501094, 16, 65539, 16000, 64000,
+                    2097156, 1635017060, 640,
                 ];
                 audioInt32.set(header, 0);
 
@@ -221,25 +208,23 @@
                 let audio = new Audio(blobURL);
 
                 audio.addEventListener('canplaythrough', () => {
-                  audio
-                    .play()
-                    .then(() => {
-                      resolve(true);
-                    })
-                    .catch((ex) => {
-                      globalTracingLogger.log('Unable to auto play audio', ex);
-                      reject(ex);
-                    })
-                    .finally(() => {
-                      window.URL.revokeObjectURL(blobURL);
-                    });
+                    audio.play()
+                        .then(() => {
+                            resolve(true);
+                        })
+                        .catch((ex) => {
+                          addLog.log('Unable to auto play audio', ex);
+                            reject(ex);
+                        })
+                        .finally(() => {
+                            window.URL.revokeObjectURL(blobURL);
+                        });
                 });
 
-                /** iphone safari need this to trigger canplaythrouth event */
                 if (audio.load) {
-                  audio.load();
+                    audio.load();
                 }
-              });
+            });
         }
 
         async function getMicrophoneList() {
@@ -279,35 +264,6 @@
             getMicrophoneList();
         }
 
-        function setupAudioPlayer() {
-            const playButton = document.getElementById('playButton1');
-            const playButton2 = document.getElementById('playButton2');
-            const pauseButton = document.getElementById('pauseButton1');
-            const stopButton = document.getElementById('stopButton1');
-            const stopButton2 = document.getElementById('stopButton2');
-            const autoPlayButton = document.getElementById('autoPlayButton');
-            
-
-            playButton.addEventListener('click', playAudio);
-            pauseButton.addEventListener('click', pauseAudio);
-            stopButton.addEventListener('click', stopAudio);
-            playButton2.addEventListener('click', playAudio2);
-            stopButton2.addEventListener('click', stopAudio2);
-            autoPlayButton.addEventListener('click', autoPlay);
-        }
-
-        let mediaRecorder;
-        let audioChunks = [];
-        const startRecordButton = document.getElementById('startRecordButton');
-        const stopRecordButton = document.getElementById('stopRecordButton');
-        const stopOldRecordButton = document.getElementById('stopOldRecordButton');
-        const downloadLink = document.getElementById('downloadLink');
-
-        startRecordButton.addEventListener('click', startRecording);
-        stopRecordButton.addEventListener('click', stopRecording);
-        stopOldRecordButton.addEventListener('click', stopOldRecording);
-        
-
         async function startRecording() {
             if (!selectedMicId) {
                 selectedMicId = 'default';
@@ -315,7 +271,6 @@
 
             try {
                 oldStream = stream;
-                console.log('oldStream', oldStream)
                 stream = await navigator.mediaDevices.getUserMedia({ 
                     audio: {
                         deviceId: { exact: selectedMicId },
@@ -328,21 +283,10 @@
                     } 
                 });
 
-                if(audioTag == null) {
-                    addLog(`创建audio Tag for playing captured audio`);
-                    audioTag = document.createElement('audio');
-                    audioTag.muted = false;
-                    document.documentElement.appendChild(audioTag);
-                }
-                audioTag.srcObject = stream;
-                audioTag.play();
-
-
                 const audioTrack = stream?.getAudioTracks()[0];
                 micId = audioTrack.deviceId;
                 micLabel = audioTrack.label;
                 
-                // startRecordButton.disabled = true;
                 stopRecordButton.disabled = false;
                 stopOldRecordButton.disabled = false;
                 addLog(`开始采集 - 使用设备: ${micLabel}`);
@@ -355,7 +299,6 @@
 
         function stopRecording() {
             stream.getTracks().forEach(track => track.stop());
-
             addLog('stream 已停止'+ stream.id);
             startRecordButton.disabled = false;
             stopRecordButton.disabled = true;
@@ -364,17 +307,10 @@
 
         function stopOldRecording() {
             oldStream.getTracks().forEach(track => track.stop());
-
             addLog('old stream 已停止' + oldStream.id);
             stopOldRecordButton.disabled = true;
             oldStream = null;
         }
-
-        window.addEventListener('load', () => {
-            initDeviceSelection();
-            setupAudioPlayer();
-            addLog('页面初始化完成');
-        });
 
         function cleanup() {
             if (sourceNode) {
@@ -389,6 +325,16 @@
             isPlaying = false;
             addLog('资源已清理');
         }
+
+        window.addEventListener('load', () => {
+            initDeviceSelection();
+            document.getElementById('createAudioTagButton').addEventListener('click', createAudioTag);
+            document.getElementById('autoPlayButton').addEventListener('click', autoPlay);
+            document.getElementById('startRecordButton').addEventListener('click', startRecording);
+            document.getElementById('stopRecordButton').addEventListener('click', stopRecording);
+            document.getElementById('stopOldRecordButton').addEventListener('click', stopOldRecording);
+            addLog('页面初始化完成');
+        });
         
         window.addEventListener('unload', cleanup);
     </script>
