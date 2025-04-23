@@ -274,7 +274,7 @@
                 stream = await navigator.mediaDevices.getUserMedia({ 
                     audio: {
                         deviceId: { exact: selectedMicId },
-                        echoCancellation: true,
+                        echoCancellation: false,
                         noiseSuppression: true,
                         autoGainControl: true,
                         latency: 0,
