@@ -58,18 +58,24 @@
             padding: 5px;
             border-bottom: 1px solid #eee;
         }
+        .sine-wave-controls {
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
     </style>
 </head>
 <body>
     <div class="player">
         <h2>Audio Player</h2>
-        <div class="mode-select">
+        <!-- <div class="mode-select">
             <label>播放模式：</label>
             <select id="playMode">
                 <option value="audio">Audio标签</option>
                 <option value="context">AudioContext</option>
             </select>
-        </div>
+        </div> -->
 
         <div class="audioControls">
             <select id="audioFileSelect">
@@ -88,6 +94,20 @@
         <div class="audioControls">
             <button id="autoPlayButton">Test Auto Play</button>
         </div>
+
+        <div class="sine-wave-controls">
+            <h3>Sine Wave Generator</h3>
+            <label for="sampleRate">Sample Rate (Hz):</label>
+            <select id="sampleRate">
+                <option value="8000">8000 Hz</option>
+                <option value="16000">16000 Hz</option>
+                <option value="44100">44100 Hz</option>
+                <option value="48000">48000 Hz</option>
+            </select>
+            <br>
+            <button id="playSineWave">Play Sine Wave</button>
+            <button id="stopSineWave">Stop Sine Wave</button>
+        </div>
     </div>
 
     <div class="recorder">
@@ -100,7 +120,6 @@
         <button id="startRecordButton">Start Recording</button>
         <button id="stopRecordButton">Stop Recording</button>
         <button id="stopOldRecordButton">Stop Old Recording</button>
-<!--         <button id="faceRecordButton">Face Record</button> -->
         <div id="downloadLink"></div>
     </div>
 
@@ -115,12 +134,13 @@
         let selectedMicId = '';
         let micId;
         let micLabel;
-        let audioContext;
+        let audioContext = null;
         let audioBuffer;
         let sourceNode;
         let isPlaying = false;
         let currentPlayMode = 'audio';
         let audioTagCounter = 0;
+        let oscillator = null;
 
         function addLog(message) {
             const logsDiv = document.getElementById('logs');
@@ -148,7 +168,6 @@
             let audio = document.createElement('audio');
             audio.id = `audioPlayer${audioTagCounter}`;
             audio.loop = true;
-            // audio.src = selectedFile;
             
             const playButton = document.createElement('button');
             playButton.textContent = `Play ${audioTagCounter}`;
@@ -159,17 +178,12 @@
               audio.play()
             };
             
-            // const pauseButton = document.createElement('button');
-            // pauseButton.textContent = `Pause ${audioTagCounter}`;
-            // pauseButton.onclick = () => audio.pause();
-            
             const stopButton = document.createElement('button');
             stopButton.textContent = `Stop ${audioTagCounter}`;
             stopButton.onclick = () => {
                 audio.pause();
                 audio.currentTime = 0;
                 audio.src = '';
-                // audio.load();
                 addLog(`已停止 Audio Tag ${audioTagCounter}`);
             };
             
@@ -187,12 +201,46 @@
             
             containerDiv.appendChild(audio);
             containerDiv.appendChild(playButton);
-            // containerDiv.appendChild(pauseButton);
             containerDiv.appendChild(stopButton);
             containerDiv.appendChild(removeButton);
             
             document.getElementById('audioTagsContainer').appendChild(containerDiv);
             addLog(`已创建新的 Audio Tag ${audioTagCounter} (${selectedFile})`);
+        }
+
+        function playSineWave() {
+            const sampleRate = parseInt(document.getElementById('sampleRate').value);
+            
+            if (audioContext) {
+                audioContext.close();
+            }
+            
+            audioContext = new (window.AudioContext || window.webkitAudioContext)({
+                sampleRate: sampleRate
+            });
+            
+            oscillator = audioContext.createOscillator();
+            
+            oscillator.type = 'sine';
+            oscillator.frequency.setValueAtTime(440, audioContext.currentTime); // 440Hz - A4 note
+            
+            oscillator.connect(audioContext.destination);
+            
+            oscillator.start();
+            addLog(`Started sine wave at ${sampleRate}Hz sample rate`);
+        }
+
+        function stopSineWave() {
+            if (oscillator) {
+                oscillator.stop();
+                oscillator.disconnect();
+                oscillator = null;
+            }
+            if (audioContext) {
+                audioContext.close();
+                audioContext = null;
+            }
+            addLog('Stopped sine wave');
         }
 
         function autoPlay() {
@@ -215,7 +263,7 @@
                             resolve(true);
                         })
                         .catch((ex) => {
-                          addLog.log('Unable to auto play audio', ex);
+                            addLog('Unable to auto play audio: ' + ex);
                             reject(ex);
                         })
                         .finally(() => {
@@ -314,22 +362,6 @@
             oldStream = null;
         }
 
-        // function faceRecording() {
-        //   const audioContext = new AudioContext();
-        //   const oscillator = audioContext.createOscillator();
-        //   oscillator.type = 'sine';
-        //   oscillator.frequency.setValueAtTime(440, audioContext.currentTime); // A4 FF17
-        //   // 创建一个 MediastreamDestination：看起来像是 mic 采集出来的流
-        //   const destination = audioContext.createMediaStreamDestination();
-        //   // 连接方点
-        //   oscillator.connect(destination);
-        //   // oscillator.connect(audioContext.destination);
-        //   oscillator.start();
-        //   // 这就是一个假的麦克风 Mediastream，可以传给 WebRTC 或其他 API
-        //   const fakeMicStream = destination.stream;
-          
-        // }
-
         function cleanup() {
             if (sourceNode) {
                 sourceNode.stop();
@@ -338,6 +370,11 @@
             if (audioContext) {
                 audioContext.close();
                 audioContext = null;
+            }
+            if (oscillator) {
+                oscillator.stop();
+                oscillator.disconnect();
+                oscillator = null;
             }
             audioBuffer = null;
             isPlaying = false;
@@ -351,7 +388,8 @@
             document.getElementById('startRecordButton').addEventListener('click', startRecording);
             document.getElementById('stopRecordButton').addEventListener('click', stopRecording);
             document.getElementById('stopOldRecordButton').addEventListener('click', stopOldRecording);
-            // document.getElementById('faceRecordButton').addEventListener('click', faceRecording);
+            document.getElementById('playSineWave').addEventListener('click', playSineWave);
+            document.getElementById('stopSineWave').addEventListener('click', stopSineWave);
         });
         window.addEventListener('unload', cleanup);
     </script>
