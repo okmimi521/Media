@@ -64,18 +64,20 @@
             border: 1px solid #ddd;
             border-radius: 5px;
         }
+        .audio-processing-controls {
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .audio-processing-controls label {
+            margin-right: 15px;
+        }
     </style>
 </head>
 <body>
     <div class="player">
         <h2>Audio Player</h2>
-        <!-- <div class="mode-select">
-            <label>播放模式：</label>
-            <select id="playMode">
-                <option value="audio">Audio标签</option>
-                <option value="context">AudioContext</option>
-            </select>
-        </div> -->
 
         <div class="audioControls">
             <select id="audioFileSelect">
@@ -116,6 +118,23 @@
             <option value="">选择麦克风设备...</option>
         </select>
         <button id="refreshMicList">刷新设备列表</button>
+        
+        <div class="audio-processing-controls">
+            <h3>APM</h3>
+            <label>
+                <input type="checkbox" id="aecCheckbox" checked>
+              AEC
+            </label>
+            <label>
+                <input type="checkbox" id="agcCheckbox" checked>
+              AGC
+            </label>
+            <label>
+                <input type="checkbox" id="nsCheckbox" checked>
+              NS
+            </label>
+        </div>
+        
         <br>
         <button id="startRecordButton">Start Recording</button>
         <button id="stopRecordButton">Stop Recording</button>
@@ -222,7 +241,7 @@
             oscillator = audioContext.createOscillator();
             
             oscillator.type = 'sine';
-            oscillator.frequency.setValueAtTime(440, audioContext.currentTime); // 440Hz - A4 note
+            oscillator.frequency.setValueAtTime(440, audioContext.currentTime);
             
             oscillator.connect(audioContext.destination);
             
@@ -319,20 +338,23 @@
                 selectedMicId = 'default';
             }
 
+            const aecEnabled = document.getElementById('aecCheckbox').checked;
+            const agcEnabled = document.getElementById('agcCheckbox').checked;
+            const nsEnabled = document.getElementById('nsCheckbox').checked;
+
             try {
                 oldStream = stream;
                 stream = await navigator.mediaDevices.getUserMedia({ 
                     audio: {
                         deviceId: { exact: selectedMicId },
-                        echoCancellation: true,
-                        noiseSuppression: true,
-                        autoGainControl: true,
+                        echoCancellation: aecEnabled,
+                        noiseSuppression: nsEnabled,
+                        autoGainControl: agcEnabled,
                         latency: 0,
                         channelCount: 2,
                         sampleRate: 48000
                     } 
                 });
-
                 const audioTrack = stream?.getAudioTracks()[0];
                 micId = audioTrack.deviceId;
                 micLabel = audioTrack.label;
@@ -340,6 +362,7 @@
                 stopRecordButton.disabled = false;
                 stopOldRecordButton.disabled = false;
                 addLog(`开始采集 - 使用设备: ${micLabel}`);
+                addLog(`音频处理设置 - AEC: ${aecEnabled}, AGC: ${agcEnabled}, NS: ${nsEnabled}`);
                 addLog(`采集的stream: ${stream.id}`);
             } catch (error) {
                 addLog(`录音失败: ${error.message}`);
