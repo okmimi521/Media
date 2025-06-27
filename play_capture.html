@@ -188,7 +188,30 @@
             audio.id = `audioPlayer${audioTagCounter}`;
             audio.loop = true;
             document.documentElement.appendChild(audio);
+                            
+            // Add event listeners for auto play test
+            audio.addEventListener('canplay', () => {
+                addLog('Auto Play Test: canplay event - audio is ready');
+            });
             
+            audio.addEventListener('playing', () => {
+                addLog('Auto Play Test: audio is playing');
+            });
+
+            audio.addEventListener('pause', () => {
+                addLog('Auto Play Test: audio is paused');
+            });
+            
+            audio.addEventListener('error', (e) => {
+                const error = audio.error;
+                if (error) {
+                    addLog(`Auto Play Test: error event - code: ${error.code}, message: ${error.message}`,);
+                } else {
+                    addLog('Auto Play Test: error event occurred');
+                }
+            });
+
+
             const playButton = document.createElement('button');
             playButton.textContent = `Play ${audioTagCounter}`;
             playButton.onclick = () => {
