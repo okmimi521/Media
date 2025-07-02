@@ -176,7 +176,7 @@
             logsDiv.insertBefore(logEntry, logsDiv.firstChild);
         }
 
-        function createAudioTag() {
+        function createAudioTag(zero = false) {
             const audioFileSelect = document.getElementById('audioFileSelect');
             const selectedFile = audioFileSelect.value;
             audioTagCounter++;
@@ -218,7 +218,11 @@
             playButton.textContent = `Play ${audioTagCounter}`;
             playButton.onclick = () => {
               if(audio.src == null || audio.src == "") {
-                audio.src = selectedFile;
+                if (selectedFile != ""){
+                  audio.src = selectedFile;
+                } else {
+                  audio.srcObject = new MediaStream();
+                }
               }
               audio.play()
             };
