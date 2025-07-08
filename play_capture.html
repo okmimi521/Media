@@ -84,6 +84,39 @@
             display: flex;
             gap: 10px;
         }
+        .file-stream-container {
+            margin-top: 15px;
+            padding: 10px;
+            border: 1px solid #e0e0e0;
+            border-radius: 5px;
+        }
+        .p2p-audio-item {
+            margin: 15px 0;
+            padding: 10px;
+            border: 1px solid #e0e0e0;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+        .file-stream-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .file-stream-controls {
+            display: flex;
+            gap: 10px;
+        }
+        .audio-tag-wrapper {
+            display: flex;
+            align-items: center;
+            margin-top: 10px;
+        }
+        .stream-info {
+            font-size: 14px;
+            color: #666;
+            margin-top: 5px;
+        }
     </style>
 </head>
 <body>
@@ -99,6 +132,8 @@
                 <option value="">no src</option>
             </select>
             <button id="createAudioTagButton">Create Audio Tag</button>
+            <!-- 新增：发送文件流的按钮 -->
+            <button id="sendFileStreamButton">Send File Stream via P2P</button>
         </div>
 
         <div id="audioTagsContainer">
@@ -121,6 +156,13 @@
             <br>
             <button id="playSineWave">Play Sine Wave</button>
             <button id="stopSineWave">Stop Sine Wave</button>
+        </div>
+    </div>
+
+    <div class="file-stream-container">
+        <h2>P2P File Streams</h2>
+        <div id="fileStreamsContainer">
+            <!-- P2P文件流音频标签将在这里动态添加 -->
         </div>
     </div>
 
@@ -161,16 +203,15 @@
             <button id="startP2P">Start P2P Connection</button>
             <button id="stopP2P">Stop P2P Connection</button>
         </div>
-        <div class="p2p-audio-container">
+        <!-- <div class="p2p-audio-container">
             <h3>P2P Audio Output</h3>
             <audio id="p2pAudio" autoplay controls></audio>
             
-            <!-- 新增的srcObject控制按钮 -->
             <div class="src-controls">
                 <button id="setSrcNull">Set srcObject = null</button>
                 <button id="setSrcOriginal">Set srcObject = Original Stream</button>
             </div>
-        </div>
+        </div> -->
     </div>
 
     <div id="logContainer">
@@ -180,7 +221,7 @@
 
     <script>
         let stream = null;
-        let originalStream = null; // 保存原始流
+        let originalStream = null;
         let oldStream = null;
         let selectedMicId = '';
         let micId;
@@ -197,6 +238,9 @@
         let localPeerConnection = null;
         let remotePeerConnection = null;
         let p2pAudio = document.getElementById('p2pAudio');
+        let p2pStreamCounter = 0;
+        let p2pFileStreams = {};
+        let audioContextForFiles = null;
 
         function addLog(message) {
             const logsDiv = document.getElementById('logs');
@@ -291,6 +335,181 @@
             
             document.getElementById('audioTagsContainer').appendChild(containerDiv);
             addLog(`已创建新的 Audio Tag ${audioTagCounter} (${selectedFile})`);
+        }
+        
+        // 新功能：从文件中读取音频流并通过P2P发送
+        async function sendFileStream() {
+            const audioFileSelect = document.getElementById('audioFileSelect');
+            const selectedFile = audioFileSelect.value;
+            
+            if (!selectedFile) {
+                addLog('请选择一个音频文件');
+                return;
+            }
+            
+            if (!localPeerConnection || !remotePeerConnection) {
+                addLog('请先建立P2P连接');
+                return;
+            }
+            
+            try {
+                // 创建文件流ID
+                const streamId = `file-stream-${Date.now()}`;
+                p2pStreamCounter++;
+                
+                // 获取文件
+                const response = await fetch(selectedFile);
+                const arrayBuffer = await response.arrayBuffer();
+                
+                // 创建用于文件播放的AudioContext
+                if (!audioContextForFiles) {
+                    audioContextForFiles = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                
+                // 解码音频数据
+                const audioBuffer = await audioContextForFiles.decodeAudioData(arrayBuffer);
+                
+                // 创建MediaStreamDestination
+                const destination = audioContextForFiles.createMediaStreamDestination();
+                
+                // 创建音频源节点
+                const sourceNode = audioContextForFiles.createBufferSource();
+                sourceNode.buffer = audioBuffer;
+                sourceNode.loop = true;
+                sourceNode.connect(destination);
+                sourceNode.start();
+                
+                // 获取音频轨道
+                const track = destination.stream.getAudioTracks()[0];
+                
+                // 添加到P2P连接
+                const sender = localPeerConnection.addTrack(track, destination.stream);
+                
+                // 保存流信息
+                p2pFileStreams[streamId] = {
+                    sourceNode: sourceNode,
+                    stream: destination.stream,
+                    sender: sender,
+                    filename: selectedFile
+                };
+                
+                addLog(`已发送文件流: ${selectedFile} (ID: ${streamId})`);
+                
+                // 在接收端创建音频标签
+                createP2PAudioTag(destination.stream, streamId, selectedFile);
+                
+            } catch (error) {
+                addLog(`发送文件流失败: ${error.message}`);
+                console.error('发送文件流失败:', error);
+            }
+        }
+        
+        // 创建P2P音频标签
+        function createP2PAudioTag(stream, streamId, filename) {
+            const container = document.getElementById('fileStreamsContainer');
+            
+            const audioItem = document.createElement('div');
+            audioItem.className = 'p2p-audio-item';
+            audioItem.id = `p2p-audio-${streamId}`;
+            
+            const header = document.createElement('div');
+            header.className = 'file-stream-header';
+            
+            const title = document.createElement('h4');
+            title.textContent = `文件流: ${filename}`;
+            header.appendChild(title);
+            
+            const controls = document.createElement('div');
+            controls.className = 'file-stream-controls';
+            
+            const toggleButton = document.createElement('button');
+            toggleButton.textContent = '暂停播放';
+            toggleButton.onclick = () => toggleP2PStream(streamId);
+            
+            const removeButton = document.createElement('button');
+            removeButton.textContent = '移除';
+            removeButton.onclick = () => removeP2PStream(streamId);
+            
+            controls.appendChild(toggleButton);
+            controls.appendChild(removeButton);
+            header.appendChild(controls);
+            audioItem.appendChild(header);
+            
+            const audioWrapper = document.createElement('div');
+            audioWrapper.className = 'audio-tag-wrapper';
+            
+            const audio = document.createElement('audio');
+            audio.id = `p2p-audio-player-${streamId}`;
+            audio.autoplay = true;
+            audio.controls = true;
+            audio.srcObject = stream;
+            
+            // 添加错误处理
+            audio.addEventListener('error', (e) => {
+                const error = audio.error;
+                if (error) {
+                    addLog(`P2P音频错误 (${filename}): code ${error.code} - ${error.message}`);
+                } else {
+                    addLog(`P2P音频错误 (${filename}): 未知错误`);
+                }
+            });
+            
+            audioWrapper.appendChild(audio);
+            audioItem.appendChild(audioWrapper);
+            
+            const info = document.createElement('div');
+            info.className = 'stream-info';
+            info.textContent = `流ID: ${streamId}`;
+            audioItem.appendChild(info);
+            
+            container.appendChild(audioItem);
+            addLog(`已创建P2P音频标签: ${filename}`);
+        }
+        
+        // 切换P2P流状态
+        function toggleP2PStream(streamId) {
+            if (!p2pFileStreams[streamId]) return;
+            
+            const audio = document.getElementById(`p2p-audio-player-${streamId}`);
+            const button = document.querySelector(`#p2p-audio-${streamId} .file-stream-controls button:first-child`);
+            
+            if (audio.srcObject) {
+                // 保存原始流
+                p2pFileStreams[streamId].originalStream = audio.srcObject;
+                audio.srcObject = null;
+                button.textContent = '恢复播放';
+                addLog(`已暂停P2P流: ${p2pFileStreams[streamId].filename}`);
+            } else {
+                audio.srcObject = p2pFileStreams[streamId].originalStream || p2pFileStreams[streamId].stream;
+                button.textContent = '暂停播放';
+                addLog(`已恢复P2P流: ${p2pFileStreams[streamId].filename}`);
+            }
+        }
+        
+        // 移除P2P流
+        function removeP2PStream(streamId) {
+            if (!p2pFileStreams[streamId]) return;
+            
+            // 停止音频源
+            if (p2pFileStreams[streamId].sourceNode) {
+                p2pFileStreams[streamId].sourceNode.stop();
+            }
+            
+            // 从P2P连接中移除
+            if (p2pFileStreams[streamId].sender && localPeerConnection) {
+                localPeerConnection.removeTrack(p2pFileStreams[streamId].sender);
+            }
+            
+            // 移除DOM元素
+            const audioItem = document.getElementById(`p2p-audio-${streamId}`);
+            if (audioItem) {
+                audioItem.remove();
+            }
+            
+            // 从存储中移除
+            delete p2pFileStreams[streamId];
+            
+            addLog(`已移除P2P流: ${streamId}`);
         }
 
         function playSineWave() {
@@ -422,8 +641,8 @@
                     } 
                 });
                 
-                // // 保存原始流
-                // originalStream = stream.clone();
+                // 保存原始流
+                originalStream = stream.clone();
                 
                 const audioTrack = stream?.getAudioTracks()[0];
                 micId = audioTrack.deviceId;
@@ -461,20 +680,17 @@
         
         // P2P连接相关函数
         async function startP2PConnection() {
-            if (!stream) {
-                addLog('请先开始采集音频');
-                return;
-            }
-            
             try {
                 // 创建本地和远程PeerConnection
                 localPeerConnection = new RTCPeerConnection();
                 remotePeerConnection = new RTCPeerConnection();
                 
                 // 添加本地音频轨道
-                stream.getTracks().forEach(track => {
-                    localPeerConnection.addTrack(track, stream);
-                });
+                if (stream) {
+                    stream.getTracks().forEach(track => {
+                        localPeerConnection.addTrack(track, stream);
+                    });
+                }
                 
                 // 设置ICE候选交换
                 localPeerConnection.onicecandidate = e => {
@@ -530,6 +746,12 @@
             if (p2pAudio.srcObject) {
                 p2pAudio.srcObject = null;
             }
+            
+            // 停止所有文件流
+            for (const streamId in p2pFileStreams) {
+                removeP2PStream(streamId);
+            }
+            
             addLog('P2P连接已关闭');
         }
         
@@ -559,6 +781,10 @@
                 audioContext.close();
                 audioContext = null;
             }
+            if (audioContextForFiles) {
+                audioContextForFiles.close();
+                audioContextForFiles = null;
+            }
             if (oscillator) {
                 oscillator.stop();
                 oscillator.disconnect();
@@ -576,6 +802,8 @@
         window.addEventListener('load', () => {
             initDeviceSelection();
             document.getElementById('createAudioTagButton').addEventListener('click', createAudioTag);
+            // 新增：添加发送文件流按钮事件
+            document.getElementById('sendFileStreamButton').addEventListener('click', sendFileStream);
             document.getElementById('autoPlayButton').addEventListener('click', autoPlay);
             document.getElementById('startRecordButton').addEventListener('click', startRecording);
             document.getElementById('stopRecordButton').addEventListener('click', stopRecording);
