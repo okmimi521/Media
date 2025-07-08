@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dual Player Mode</title>
+    <title>P2P Audio Stream Control</title>
     <style>
-        .player, .microphone, .recorder {
+        .player, .microphone, .recorder, .p2p {
             margin-bottom: 20px;
             padding: 10px;
             border: 1px solid #ccc;
@@ -72,6 +72,17 @@
         }
         .audio-processing-controls label {
             margin-right: 15px;
+        }
+        .p2p-controls {
+            margin: 15px 0;
+        }
+        .p2p-audio-container {
+            margin-top: 15px;
+        }
+        .src-controls {
+            margin-top: 10px;
+            display: flex;
+            gap: 10px;
         }
     </style>
 </head>
@@ -142,6 +153,25 @@
         <button id="stopOldRecordButton">Stop Old Recording</button>
         <div id="downloadLink"></div>
     </div>
+    
+    <!-- P2P Connection Section -->
+    <div class="p2p">
+        <h2>Local P2P Connection</h2>
+        <div class="p2p-controls">
+            <button id="startP2P">Start P2P Connection</button>
+            <button id="stopP2P">Stop P2P Connection</button>
+        </div>
+        <div class="p2p-audio-container">
+            <h3>P2P Audio Output</h3>
+            <audio id="p2pAudio" autoplay controls></audio>
+            
+            <!-- 新增的srcObject控制按钮 -->
+            <div class="src-controls">
+                <button id="setSrcNull">Set srcObject = null</button>
+                <button id="setSrcOriginal">Set srcObject = Original Stream</button>
+            </div>
+        </div>
+    </div>
 
     <div id="logContainer">
         <h3>操作日志</h3>
@@ -150,6 +180,7 @@
 
     <script>
         let stream = null;
+        let originalStream = null; // 保存原始流
         let oldStream = null;
         let selectedMicId = '';
         let micId;
@@ -161,6 +192,11 @@
         let currentPlayMode = 'audio';
         let audioTagCounter = 0;
         let oscillator = null;
+        
+        // P2P相关变量
+        let localPeerConnection = null;
+        let remotePeerConnection = null;
+        let p2pAudio = document.getElementById('p2pAudio');
 
         function addLog(message) {
             const logsDiv = document.getElementById('logs');
@@ -176,7 +212,7 @@
             logsDiv.insertBefore(logEntry, logsDiv.firstChild);
         }
 
-        function createAudioTag(zero = false) {
+        function createAudioTag() {
             const audioFileSelect = document.getElementById('audioFileSelect');
             const selectedFile = audioFileSelect.value;
             audioTagCounter++;
@@ -385,12 +421,16 @@
                         sampleRate: 48000
                     } 
                 });
+                
+                // // 保存原始流
+                // originalStream = stream.clone();
+                
                 const audioTrack = stream?.getAudioTracks()[0];
                 micId = audioTrack.deviceId;
                 micLabel = audioTrack.label;
                 
-                stopRecordButton.disabled = false;
-                stopOldRecordButton.disabled = false;
+                document.getElementById('stopRecordButton').disabled = false;
+                document.getElementById('stopOldRecordButton').disabled = false;
                 addLog(`开始采集 - 使用设备: ${micLabel}`);
                 addLog(`音频处理设置 - AEC: ${aecEnabled}, AGC: ${agcEnabled}, NS: ${nsEnabled}`);
                 addLog(`采集的stream: ${stream.id}`);
@@ -401,18 +441,113 @@
         }
 
         function stopRecording() {
-            stream.getTracks().forEach(track => track.stop());
-            addLog('stream 已停止'+ stream.id);
-            startRecordButton.disabled = false;
-            stopRecordButton.disabled = true;
-            stream = null;
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                addLog('stream 已停止'+ stream.id);
+                document.getElementById('startRecordButton').disabled = false;
+                document.getElementById('stopRecordButton').disabled = true;
+                stream = null;
+            }
         }
 
         function stopOldRecording() {
-            oldStream.getTracks().forEach(track => track.stop());
-            addLog('old stream 已停止' + oldStream.id);
-            stopOldRecordButton.disabled = true;
-            oldStream = null;
+            if (oldStream) {
+                oldStream.getTracks().forEach(track => track.stop());
+                addLog('old stream 已停止' + oldStream.id);
+                document.getElementById('stopOldRecordButton').disabled = true;
+                oldStream = null;
+            }
+        }
+        
+        // P2P连接相关函数
+        async function startP2PConnection() {
+            if (!stream) {
+                addLog('请先开始采集音频');
+                return;
+            }
+            
+            try {
+                // 创建本地和远程PeerConnection
+                localPeerConnection = new RTCPeerConnection();
+                remotePeerConnection = new RTCPeerConnection();
+                
+                // 添加本地音频轨道
+                stream.getTracks().forEach(track => {
+                    localPeerConnection.addTrack(track, stream);
+                });
+                
+                // 设置ICE候选交换
+                localPeerConnection.onicecandidate = e => {
+                    if (e.candidate) {
+                        remotePeerConnection.addIceCandidate(e.candidate);
+                    }
+                };
+                
+                remotePeerConnection.onicecandidate = e => {
+                    if (e.candidate) {
+                        localPeerConnection.addIceCandidate(e.candidate);
+                    }
+                };
+                
+                // 处理远程媒体流
+                remotePeerConnection.ontrack = e => {
+                    if (e.streams && e.streams[0]) {
+                        p2pAudio.srcObject = e.streams[0];
+                        addLog('P2P连接成功，开始传输音频');
+                    }
+                };
+                
+                // 创建Offer
+                const offer = await localPeerConnection.createOffer();
+                await localPeerConnection.setLocalDescription(offer);
+                
+                // 设置远程描述
+                await remotePeerConnection.setRemoteDescription(offer);
+                
+                // 创建Answer
+                const answer = await remotePeerConnection.createAnswer();
+                await remotePeerConnection.setLocalDescription(answer);
+                
+                // 设置本地描述
+                await localPeerConnection.setRemoteDescription(answer);
+                
+                addLog('P2P连接已建立');
+            } catch (error) {
+                addLog(`P2P连接失败: ${error.message}`);
+                console.error('P2P连接错误:', error);
+            }
+        }
+        
+        function stopP2PConnection() {
+            if (localPeerConnection) {
+                localPeerConnection.close();
+                localPeerConnection = null;
+            }
+            if (remotePeerConnection) {
+                remotePeerConnection.close();
+                remotePeerConnection = null;
+            }
+            if (p2pAudio.srcObject) {
+                p2pAudio.srcObject = null;
+            }
+            addLog('P2P连接已关闭');
+        }
+        
+        // 设置srcObject为null
+        function setSrcObjectNull() {
+            originalStream = p2pAudio.srcObject;
+            p2pAudio.srcObject = null;
+            addLog('已将p2pAudio的srcObject设置为null');
+        }
+        
+        // 设置srcObject为原始流
+        function setSrcObjectOriginal() {
+            if (originalStream) {
+                p2pAudio.srcObject = originalStream;
+                addLog('已将p2pAudio的srcObject设置为原始流');
+            } else {
+                addLog('没有可用的原始流');
+            }
         }
 
         function cleanup() {
@@ -431,6 +566,10 @@
             }
             audioBuffer = null;
             isPlaying = false;
+            
+            // 清理P2P连接
+            stopP2PConnection();
+            
             addLog('资源已清理');
         }
 
@@ -443,6 +582,14 @@
             document.getElementById('stopOldRecordButton').addEventListener('click', stopOldRecording);
             document.getElementById('playSineWave').addEventListener('click', playSineWave);
             document.getElementById('stopSineWave').addEventListener('click', stopSineWave);
+            
+            // P2P按钮事件监听
+            document.getElementById('startP2P').addEventListener('click', startP2PConnection);
+            document.getElementById('stopP2P').addEventListener('click', stopP2PConnection);
+            
+            // 新增的srcObject控制按钮
+            document.getElementById('setSrcNull').addEventListener('click', setSrcObjectNull);
+            document.getElementById('setSrcOriginal').addEventListener('click', setSrcObjectOriginal);
         });
         window.addEventListener('unload', cleanup);
     </script>
