@@ -1,209 +1,235 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>P2P Audio Stream Control</title>
-    <style>
-        .player, .microphone, .recorder, .p2p {
-            margin-bottom: 20px;
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-        }
-        button {
-            font-size: 16px;
-            margin: 5px;
-            padding: 10px 20px;
-        }
-        .audioControls {
-            margin-top: 10px;
-        }
-        select {
-            padding: 5px;
-            margin: 10px 0;
-            width: 300px;
-        }
-        .mode-select {
-            margin-bottom: 10px;
-        }
-        #logContainer {
-            margin-top: 20px;
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            background-color: #f5f5f5;
-            max-height: 300px;
-            overflow-y: auto;
-        }
-        .log-entry {
-            margin: 5px 0;
-            padding: 5px;
-            border-bottom: 1px solid #ddd;
-        }
-        .log-time {
-            color: #666;
-            font-size: 0.9em;
-        }
-        .log-message {
-            margin-left: 10px;
-        }
-        #audioTagsContainer {
-            margin: 10px 0;
-            padding: 10px;
-            border: 1px dashed #ccc;
-        }
-        .audio-tag-controls {
-            margin: 10px 0;
-            padding: 5px;
-            border-bottom: 1px solid #eee;
-        }
-        .sine-wave-controls {
-            margin: 10px 0;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-        }
-        .audio-processing-controls {
-            margin: 10px 0;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-        }
-        .audio-processing-controls label {
-            margin-right: 15px;
-        }
-        .p2p-controls {
-            margin: 15px 0;
-        }
-        .p2p-audio-container {
-            margin-top: 15px;
-        }
-        .src-controls {
-            margin-top: 10px;
-            display: flex;
-            gap: 10px;
-        }
-        .file-stream-container {
-            margin-top: 15px;
-            padding: 10px;
-            border: 1px solid #e0e0e0;
-            border-radius: 5px;
-        }
-        .p2p-audio-item {
-            margin: 15px 0;
-            padding: 10px;
-            border: 1px solid #e0e0e0;
-            border-radius: 5px;
-            background-color: #f9f9f9;
-        }
-        .file-stream-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 10px;
-        }
-        .file-stream-controls {
-            display: flex;
-            gap: 10px;
-        }
-        .audio-tag-wrapper {
-            display: flex;
-            align-items: center;
-            margin-top: 10px;
-        }
-        .stream-info {
-            font-size: 14px;
-            color: #666;
-            margin-top: 5px;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>P2P Audio Stream Control</title>
+  <style>
+    .player,
+    .microphone,
+    .recorder,
+    .p2p {
+      margin-bottom: 20px;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+
+    button {
+      font-size: 16px;
+      margin: 5px;
+      padding: 10px 20px;
+    }
+
+    .audioControls {
+      margin-top: 10px;
+    }
+
+    select {
+      padding: 5px;
+      margin: 10px 0;
+      width: 300px;
+    }
+
+    .mode-select {
+      margin-bottom: 10px;
+    }
+
+    #logContainer {
+      margin-top: 20px;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      background-color: #f5f5f5;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+
+    .log-entry {
+      margin: 5px 0;
+      padding: 5px;
+      border-bottom: 1px solid #ddd;
+    }
+
+    .log-time {
+      color: #666;
+      font-size: 0.9em;
+    }
+
+    .log-message {
+      margin-left: 10px;
+    }
+
+    #audioTagsContainer {
+      margin: 10px 0;
+      padding: 10px;
+      border: 1px dashed #ccc;
+    }
+
+    .audio-tag-controls {
+      margin: 10px 0;
+      padding: 5px;
+      border-bottom: 1px solid #eee;
+    }
+
+    .sine-wave-controls {
+      margin: 10px 0;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+    }
+
+    .audio-processing-controls {
+      margin: 10px 0;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+    }
+
+    .audio-processing-controls label {
+      margin-right: 15px;
+    }
+
+    .p2p-controls {
+      margin: 15px 0;
+    }
+
+    .p2p-audio-container {
+      margin-top: 15px;
+    }
+
+    .src-controls {
+      margin-top: 10px;
+      display: flex;
+      gap: 10px;
+    }
+
+    .file-stream-container {
+      margin-top: 15px;
+      padding: 10px;
+      border: 1px solid #e0e0e0;
+      border-radius: 5px;
+    }
+
+    .p2p-audio-item {
+      margin: 15px 0;
+      padding: 10px;
+      border: 1px solid #e0e0e0;
+      border-radius: 5px;
+      background-color: #f9f9f9;
+    }
+
+    .file-stream-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .file-stream-controls {
+      display: flex;
+      gap: 10px;
+    }
+
+    .audio-tag-wrapper {
+      display: flex;
+      align-items: center;
+      margin-top: 10px;
+    }
+
+    .stream-info {
+      font-size: 14px;
+      color: #666;
+      margin-top: 5px;
+    }
+  </style>
 </head>
+
 <body>
-    <div class="player">
-        <h2>Audio Player</h2>
+  <div class="player">
+    <h2>Audio Player</h2>
 
-        <div class="audioControls">
-            <select id="audioFileSelect">
-                <option value="test1.mp3">test1.mp3</option>
-                <option value="test2.mp3">test2.mp3</option>
-                <option value="test3.mp3">test3.mp3</option>
-                <option value="test4.wav">test4.wav</option>
-                <option value="">no src</option>
-            </select>
-            <button id="createAudioTagButton">Create Audio Tag</button>
-            <!-- 新增：发送文件流的按钮 -->
-            <button id="sendFileStreamButton">Send File Stream via P2P</button>
-        </div>
-
-        <div id="audioTagsContainer">
-            <!-- Audio tags will be added here -->
-        </div>
-
-        <div class="audioControls">
-            <button id="autoPlayButton">Test Auto Play</button>
-        </div>
-
-        <div class="sine-wave-controls">
-            <h3>Sine Wave Generator</h3>
-            <label for="sampleRate">Sample Rate (Hz):</label>
-            <select id="sampleRate">
-                <option value="8000">8000 Hz</option>
-                <option value="16000">16000 Hz</option>
-                <option value="44100">44100 Hz</option>
-                <option value="48000">48000 Hz</option>
-            </select>
-            <br>
-            <button id="playSineWave">Play Sine Wave</button>
-            <button id="stopSineWave">Stop Sine Wave</button>
-        </div>
+    <div class="audioControls">
+      <select id="audioFileSelect">
+        <option value="test1.mp3">test1.mp3</option>
+        <option value="test2.mp3">test2.mp3</option>
+        <option value="test3.mp3">test3.mp3</option>
+        <option value="test4.wav">test4.wav</option>
+        <option value="">no src</option>
+      </select>
+      <button id="createAudioTagButton">Create Audio Tag</button>
+      <!-- 新增：发送文件流的按钮 -->
+      <button id="sendFileStreamButton">Send File Stream via P2P</button>
     </div>
 
-    <div class="file-stream-container">
-        <h2>P2P File Streams</h2>
-        <div id="fileStreamsContainer">
-            <!-- P2P文件流音频标签将在这里动态添加 -->
-        </div>
+    <div id="audioTagsContainer">
+      <!-- Audio tags will be added here -->
     </div>
 
-    <div class="recorder">
-        <h2>Audio Recorder (WAV)</h2>
-        <select id="micSelect">
-            <option value="">选择麦克风设备...</option>
-        </select>
-        <button id="refreshMicList">刷新设备列表</button>
-        
-        <div class="audio-processing-controls">
-            <h3>APM</h3>
-            <label>
-                <input type="checkbox" id="aecCheckbox" checked>
-              AEC
-            </label>
-            <label>
-                <input type="checkbox" id="agcCheckbox" checked>
-              AGC
-            </label>
-            <label>
-                <input type="checkbox" id="nsCheckbox" checked>
-              NS
-            </label>
-        </div>
-        
-        <br>
-        <button id="startRecordButton">Start Recording</button>
-        <button id="stopRecordButton">Stop Recording</button>
-        <button id="stopOldRecordButton">Stop Old Recording</button>
-        <div id="downloadLink"></div>
+    <div class="audioControls">
+      <button id="autoPlayButton">Test Auto Play</button>
     </div>
-    
-    <!-- P2P Connection Section -->
-    <div class="p2p">
-        <h2>Local P2P Connection</h2>
-        <div class="p2p-controls">
-            <button id="startP2P">Start P2P Connection</button>
-            <button id="stopP2P">Stop P2P Connection</button>
-        </div>
-        <!-- <div class="p2p-audio-container">
+
+    <div class="sine-wave-controls">
+      <h3>Sine Wave Generator</h3>
+      <label for="sampleRate">Sample Rate (Hz):</label>
+      <select id="sampleRate">
+        <option value="8000">8000 Hz</option>
+        <option value="16000">16000 Hz</option>
+        <option value="44100">44100 Hz</option>
+        <option value="48000">48000 Hz</option>
+      </select>
+      <br>
+      <button id="playSineWave">Play Sine Wave</button>
+      <button id="stopSineWave">Stop Sine Wave</button>
+    </div>
+  </div>
+
+  <div class="file-stream-container">
+    <h2>P2P File Streams</h2>
+    <div id="fileStreamsContainer">
+    </div>
+  </div>
+
+  <div class="recorder">
+    <h2>Audio Recorder (WAV)</h2>
+    <select id="micSelect">
+      <option value="">选择麦克风设备...</option>
+    </select>
+    <button id="refreshMicList">刷新设备列表</button>
+
+    <div class="audio-processing-controls">
+      <h3>APM</h3>
+      <label>
+        <input type="checkbox" id="aecCheckbox" checked>
+        AEC
+      </label>
+      <label>
+        <input type="checkbox" id="agcCheckbox" checked>
+        AGC
+      </label>
+      <label>
+        <input type="checkbox" id="nsCheckbox" checked>
+        NS
+      </label>
+    </div>
+
+    <br>
+    <button id="startRecordButton">Start Recording</button>
+    <button id="stopRecordButton">Stop Recording</button>
+    <button id="stopOldRecordButton">Stop Old Recording</button>
+    <div id="downloadLink"></div>
+  </div>
+
+  <!-- P2P Connection Section -->
+  <div class="p2p">
+    <h2>Local P2P Connection</h2>
+    <div class="p2p-controls">
+      <button id="startP2P">Start P2P Connection</button>
+      <button id="stopP2P">Stop P2P Connection</button>
+    </div>
+    <!-- <div class="p2p-audio-container">
             <h3>P2P Audio Output</h3>
             <audio id="p2pAudio" autoplay controls></audio>
             
@@ -212,614 +238,659 @@
                 <button id="setSrcOriginal">Set srcObject = Original Stream</button>
             </div>
         </div> -->
-    </div>
+  </div>
 
-    <div id="logContainer">
-        <h3>操作日志</h3>
-        <div id="logs"></div>
-    </div>
+  <div id="logContainer">
+    <h3>操作日志</h3>
+    <div id="logs"></div>
+  </div>
 
-    <script>
-        let stream = null;
-        let originalStream = null;
-        let oldStream = null;
-        let selectedMicId = '';
-        let micId;
-        let micLabel;
-        let audioContext = null;
-        let audioBuffer;
-        let sourceNode;
-        let isPlaying = false;
-        let currentPlayMode = 'audio';
-        let audioTagCounter = 0;
-        let oscillator = null;
-        
-        // P2P相关变量
-        let localPeerConnection = null;
-        let remotePeerConnection = null;
-        let p2pAudio = document.getElementById('p2pAudio');
-        let p2pStreamCounter = 0;
-        let p2pFileStreams = {};
-        let audioContextForFiles = null;
+  <script>
+    let stream = null;
+    let originalStream = null;
+    let oldStream = null;
+    let selectedMicId = '';
+    let micId;
+    let micLabel;
+    let audioContext = null;
+    let audioBuffer;
+    let sourceNode;
+    let isPlaying = false;
+    let currentPlayMode = 'audio';
+    let audioTagCounter = 0;
+    let oscillator = null;
 
-        function addLog(message) {
-            const logsDiv = document.getElementById('logs');
-            const logEntry = document.createElement('div');
-            logEntry.className = 'log-entry';
-            
-            const time = new Date().toLocaleTimeString();
-            logEntry.innerHTML = `
+    // P2P相关变量
+    let localPeerConnection = null;
+    let remotePeerConnection = null;
+    let p2pAudio = document.getElementById('p2pAudio');
+    let p2pStreamCounter = 0;
+    let p2pFileStreams = {};
+    let audioContextForFiles = null;
+    let remoteP2pFileStreams = {};
+
+    function addLog(message) {
+      const logsDiv = document.getElementById('logs');
+      const logEntry = document.createElement('div');
+      logEntry.className = 'log-entry';
+
+      const time = new Date().toLocaleTimeString();
+      logEntry.innerHTML = `
                 <span class="log-time">[${time}]</span>
                 <span class="log-message">${message}</span>
             `;
-            
-            logsDiv.insertBefore(logEntry, logsDiv.firstChild);
+
+      logsDiv.insertBefore(logEntry, logsDiv.firstChild);
+    }
+
+    function createAudioTag() {
+      const audioFileSelect = document.getElementById('audioFileSelect');
+      const selectedFile = audioFileSelect.value;
+      audioTagCounter++;
+
+      const containerDiv = document.createElement('div');
+      containerDiv.className = 'audio-tag-controls';
+      containerDiv.id = `audioContainer${audioTagCounter}`;
+
+      let audio = document.createElement('audio');
+      audio.id = `audioPlayer${audioTagCounter}`;
+      audio.loop = true;
+      document.documentElement.appendChild(audio);
+
+      // Add event listeners for auto play test
+      audio.addEventListener('canplay', () => {
+        addLog('Auto Play Test: canplay event - audio is ready');
+      });
+
+      audio.addEventListener('playing', () => {
+        addLog('Auto Play Test: audio is playing');
+      });
+
+      audio.addEventListener('pause', () => {
+        addLog('Auto Play Test: audio is paused');
+      });
+
+      audio.addEventListener('error', (e) => {
+        console.log(e);
+        const error = audio.error;
+        if (error) {
+          addLog(`Auto Play Test: error event - code: ${error.code}, message: ${error.message}`,);
+        } else {
+          addLog('Auto Play Test: error event occurred');
+        }
+      });
+
+
+      const playButton = document.createElement('button');
+      playButton.textContent = `Play ${audioTagCounter}`;
+      playButton.onclick = () => {
+        if (audio.src == null || audio.src == "") {
+          if (selectedFile != "") {
+            audio.src = selectedFile;
+          } else {
+            audio.srcObject = new MediaStream();
+          }
+        }
+        audio.play()
+      };
+
+      const stopButton = document.createElement('button');
+      stopButton.textContent = `Stop ${audioTagCounter}`;
+      stopButton.onclick = () => {
+        audio.pause();
+        audio.currentTime = 0;
+        audio.src = '';
+        addLog(`已停止 Audio Tag ${audioTagCounter}`);
+      };
+
+      const removeButton = document.createElement('button');
+      removeButton.textContent = `Remove ${audioTagCounter}`;
+      removeButton.onclick = () => {
+        containerDiv.remove();
+        audio.currentTime = 0;
+        audio.src = '';
+        audio.load();
+        audio.remove();
+        audio = null;
+        addLog(`已移除 Audio Tag ${audioTagCounter}`);
+      };
+
+      containerDiv.appendChild(audio);
+      containerDiv.appendChild(playButton);
+      containerDiv.appendChild(stopButton);
+      containerDiv.appendChild(removeButton);
+
+      document.getElementById('audioTagsContainer').appendChild(containerDiv);
+      addLog(`已创建新的 Audio Tag ${audioTagCounter} (${selectedFile})`);
+    }
+
+    // 在全局变量中增加
+    let pendingFileStreams = {}; // 保存待发送的文件流
+
+    // 修改后的 sendFileStream 函数
+    async function sendFileStream() {
+      const audioFileSelect = document.getElementById('audioFileSelect');
+      const selectedFile = audioFileSelect.value;
+
+      if (!selectedFile) {
+        addLog('请选择一个音频文件');
+        return;
+      }
+
+      if (!localPeerConnection || !remotePeerConnection) {
+        addLog('请先建立P2P连接');
+        return;
+      }
+
+      try {
+        // 创建唯一ID标识文件流
+        const streamId = `file-${Date.now()}`;
+
+        // 获取文件
+        const response = await fetch(selectedFile);
+        const arrayBuffer = await response.arrayBuffer();
+
+        // 创建用于文件播放的AudioContext
+        if (!audioContextForFiles) {
+          audioContextForFiles = new (window.AudioContext || window.webkitAudioContext)();
         }
 
-        function createAudioTag() {
-            const audioFileSelect = document.getElementById('audioFileSelect');
-            const selectedFile = audioFileSelect.value;
-            audioTagCounter++;
-            
-            const containerDiv = document.createElement('div');
-            containerDiv.className = 'audio-tag-controls';
-            containerDiv.id = `audioContainer${audioTagCounter}`;
-            
-            let audio = document.createElement('audio');
-            audio.id = `audioPlayer${audioTagCounter}`;
-            audio.loop = true;
-            document.documentElement.appendChild(audio);
-                            
-            // Add event listeners for auto play test
-            audio.addEventListener('canplay', () => {
-                addLog('Auto Play Test: canplay event - audio is ready');
+        // 解码音频数据
+        const audioBuffer = await audioContextForFiles.decodeAudioData(arrayBuffer);
+
+        // 创建MediaStreamDestination
+        const destination = audioContextForFiles.createMediaStreamDestination();
+
+        // 创建音频源节点
+        const sourceNode = audioContextForFiles.createBufferSource();
+        sourceNode.buffer = audioBuffer;
+        sourceNode.loop = true;
+        sourceNode.connect(destination);
+        sourceNode.start();
+
+        // 获取完整的媒体流
+        const mediaStream = destination.stream;
+
+        // 保存流信息
+        p2pFileStreams[streamId] = {
+          sourceNode,
+          stream: mediaStream,
+          filename: selectedFile
+        };
+
+        // 添加到待处理队列（等待重新协商）
+        pendingFileStreams[streamId] = mediaStream;
+
+        // 触发重新协商
+        await renegotiateP2PConnection();
+
+        addLog(`file stream is ready: ${selectedFile}`);
+
+      } catch (error) {
+        addLog(`send file stream failed: ${error.message}`);
+      }
+    }
+
+    // 新增：重新协商P2P连接
+    async function renegotiateP2PConnection() {
+      if (!localPeerConnection || !remotePeerConnection) return;
+
+      try {
+        // 1. 添加所有待处理的流
+        for (const streamId in pendingFileStreams) {
+          const stream = pendingFileStreams[streamId];
+          stream.getTracks().forEach(track => {
+            localPeerConnection.addTrack(track, stream);
+            addLog(`add track: ${track.kind} (${streamId})`);
+          });
+        }
+
+        // 2. 创建新的offer
+        const offer = await localPeerConnection.createOffer();
+        await localPeerConnection.setLocalDescription(offer);
+
+        // 3. 设置远程描述
+        await remotePeerConnection.setRemoteDescription(offer);
+
+        // 4. 创建answer
+        const answer = await remotePeerConnection.createAnswer();
+        await remotePeerConnection.setLocalDescription(answer);
+
+        // 5. 设置本地描述
+        await localPeerConnection.setRemoteDescription(answer);
+
+        // 6. 清空待处理队列
+        pendingFileStreams = {};
+
+        addLog('renegotiate P2PConnection done');
+      } catch (error) {
+        addLog(`renegotiate P2PConnection failed: ${error.message}`);
+      }
+    }
+
+    // 创建P2P音频标签
+    function createP2PAudioTag(stream, streamId, filename) {
+      if (document.getElementById(`p2p-audio-${streamId}`)) {
+        addLog(`audio tag has already exists: ${filename}`);
+        return;
+      }
+      const container = document.getElementById('fileStreamsContainer');
+
+      const audioItem = document.createElement('div');
+      audioItem.className = 'p2p-audio-item';
+      audioItem.id = `p2p-audio-${streamId}`;
+
+      const header = document.createElement('div');
+      header.className = 'file-stream-header';
+
+      const title = document.createElement('h4');
+      title.textContent = `file stream: ${filename}`;
+      header.appendChild(title);
+
+      const controls = document.createElement('div');
+      controls.className = 'file-stream-controls';
+
+      const toggleButton = document.createElement('button');
+      toggleButton.textContent = 'pause';
+      toggleButton.onclick = () => toggleP2PStream(streamId);
+
+      const removeButton = document.createElement('button');
+      removeButton.textContent = 'remove';
+      removeButton.onclick = () => removeP2PStream(streamId);
+
+      controls.appendChild(toggleButton);
+      controls.appendChild(removeButton);
+      header.appendChild(controls);
+      audioItem.appendChild(header);
+
+      const audioWrapper = document.createElement('div');
+      audioWrapper.className = 'audio-tag-wrapper';
+
+      const audio = document.createElement('audio');
+      audio.id = `p2p-audio-player-${streamId}`;
+      audio.autoplay = true;
+      audio.controls = true;
+      audio.srcObject = stream;
+
+      // 添加错误处理
+      audio.addEventListener('error', (e) => {
+        const error = audio.error;
+        if (error) {
+          addLog(`audio tag error (${filename}): code ${error.code} - ${error.message}`);
+        } else {
+          addLog(`audio tag error  (${filename}): unknown error`);
+        }
+      });
+
+      audioWrapper.appendChild(audio);
+      audioItem.appendChild(audioWrapper);
+
+      const info = document.createElement('div');
+      info.className = 'stream-info';
+      info.textContent = `stream ID: ${streamId}`;
+      audioItem.appendChild(info);
+
+      container.appendChild(audioItem);
+      addLog(`create audio tag success: ${filename}`);
+    }
+
+    // 切换P2P流状态
+    function toggleP2PStream(streamId) {
+      const audio = document.getElementById(`p2p-audio-player-${streamId}`);
+      const button = document.querySelector(`#p2p-audio-${streamId} .file-stream-controls button:first-child`);
+      if (!remoteP2pFileStreams[streamId]) {
+        remoteP2pFileStreams[streamId] = {
+          originalStream: audio.srcObject
+        }
+      };
+      if (audio.srcObject) {
+        // 保存原始流
+        remoteP2pFileStreams[streamId].originalStream = audio.srcObject;
+        audio.srcObject = null;
+        button.textContent = 'play';
+        addLog(`${remoteP2pFileStreams[streamId].filename}: paused`);
+      } else {
+        audio.srcObject = remoteP2pFileStreams[streamId].originalStream;
+        button.textContent = 'pause';
+        addLog(`${remoteP2pFileStreams[streamId].filename}: playing`);
+      }
+    }
+
+    // 移除P2P流
+    function removeP2PStream(streamId) {
+      if (!remoteP2pFileStreams[streamId]) return;
+
+      // 停止音频源
+      if (remoteP2pFileStreams[streamId].sourceNode) {
+        remoteP2pFileStreams[streamId].sourceNode.stop();
+      }
+
+      // 从P2P连接中移除
+      if (remoteP2pFileStreams[streamId].sender && localPeerConnection) {
+        localPeerConnection.removeTrack(remoteP2pFileStreams[streamId].sender);
+      }
+
+      // 移除DOM元素
+      const audioItem = document.getElementById(`p2p-audio-${streamId}`);
+      if (audioItem) {
+        audioItem.remove();
+      }
+
+      // 从存储中移除
+      delete remoteP2pFileStreams[streamId];
+
+      addLog(`remove p2p stream: ${streamId}`);
+    }
+
+    function playSineWave() {
+      const sampleRate = parseInt(document.getElementById('sampleRate').value);
+
+      if (audioContext) {
+        audioContext.close();
+      }
+
+      audioContext = new (window.AudioContext || window.webkitAudioContext)({
+        sampleRate: sampleRate
+      });
+
+      oscillator = audioContext.createOscillator();
+
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(440, audioContext.currentTime);
+
+      oscillator.connect(audioContext.destination);
+
+      oscillator.start();
+      addLog(`Started sine wave at ${sampleRate}Hz sample rate`);
+    }
+
+    function stopSineWave() {
+      if (oscillator) {
+        oscillator.stop();
+        oscillator.disconnect();
+        oscillator = null;
+      }
+      if (audioContext) {
+        audioContext.close();
+        audioContext = null;
+      }
+      addLog('Stopped sine wave');
+    }
+
+    function autoPlay() {
+      return new Promise((resolve, reject) => {
+        let audioArrayBuffer = new ArrayBuffer(684);
+        let audioInt32 = new Uint32Array(audioArrayBuffer);
+        let header = [
+          1179011410, 676, 1163280727, 544501094, 16, 65539, 16000, 64000,
+          2097156, 1635017060, 640,
+        ];
+        audioInt32.set(header, 0);
+
+        let blob = new Blob([audioInt32], { type: 'audio/wav' });
+        let blobURL = window.URL.createObjectURL(blob);
+        let audio = new Audio(blobURL);
+
+        audio.addEventListener('canplaythrough', () => {
+          audio.play()
+            .then(() => {
+              resolve(true);
+            })
+            .catch((ex) => {
+              addLog('Unable to auto play audio: ' + ex);
+              reject(ex);
+            })
+            .finally(() => {
+              window.URL.revokeObjectURL(blobURL);
             });
-            
-            audio.addEventListener('playing', () => {
-                addLog('Auto Play Test: audio is playing');
-            });
-
-            audio.addEventListener('pause', () => {
-                addLog('Auto Play Test: audio is paused');
-            });
-            
-            audio.addEventListener('error', (e) => {
-                console.log(e);
-                const error = audio.error;
-                if (error) {
-                    addLog(`Auto Play Test: error event - code: ${error.code}, message: ${error.message}`,);
-                } else {
-                    addLog('Auto Play Test: error event occurred');
-                }
-            });
-
-
-            const playButton = document.createElement('button');
-            playButton.textContent = `Play ${audioTagCounter}`;
-            playButton.onclick = () => {
-              if(audio.src == null || audio.src == "") {
-                if (selectedFile != ""){
-                  audio.src = selectedFile;
-                } else {
-                  audio.srcObject = new MediaStream();
-                }
-              }
-              audio.play()
-            };
-            
-            const stopButton = document.createElement('button');
-            stopButton.textContent = `Stop ${audioTagCounter}`;
-            stopButton.onclick = () => {
-                audio.pause();
-                audio.currentTime = 0;
-                audio.src = '';
-                addLog(`已停止 Audio Tag ${audioTagCounter}`);
-            };
-            
-            const removeButton = document.createElement('button');
-            removeButton.textContent = `Remove ${audioTagCounter}`;
-            removeButton.onclick = () => {
-                containerDiv.remove();
-                audio.currentTime = 0;
-                audio.src = '';
-                audio.load();
-                audio.remove();
-                audio = null;
-                addLog(`已移除 Audio Tag ${audioTagCounter}`);
-            };
-            
-            containerDiv.appendChild(audio);
-            containerDiv.appendChild(playButton);
-            containerDiv.appendChild(stopButton);
-            containerDiv.appendChild(removeButton);
-            
-            document.getElementById('audioTagsContainer').appendChild(containerDiv);
-            addLog(`已创建新的 Audio Tag ${audioTagCounter} (${selectedFile})`);
-        }
-        
-        // 新功能：从文件中读取音频流并通过P2P发送
-        async function sendFileStream() {
-            const audioFileSelect = document.getElementById('audioFileSelect');
-            const selectedFile = audioFileSelect.value;
-            
-            if (!selectedFile) {
-                addLog('请选择一个音频文件');
-                return;
-            }
-            
-            if (!localPeerConnection || !remotePeerConnection) {
-                addLog('请先建立P2P连接');
-                return;
-            }
-            
-            try {
-                // 创建文件流ID
-                const streamId = `file-stream-${Date.now()}`;
-                p2pStreamCounter++;
-                
-                // 获取文件
-                const response = await fetch(selectedFile);
-                const arrayBuffer = await response.arrayBuffer();
-                
-                // 创建用于文件播放的AudioContext
-                if (!audioContextForFiles) {
-                    audioContextForFiles = new (window.AudioContext || window.webkitAudioContext)();
-                }
-                
-                // 解码音频数据
-                const audioBuffer = await audioContextForFiles.decodeAudioData(arrayBuffer);
-                
-                // 创建MediaStreamDestination
-                const destination = audioContextForFiles.createMediaStreamDestination();
-                
-                // 创建音频源节点
-                const sourceNode = audioContextForFiles.createBufferSource();
-                sourceNode.buffer = audioBuffer;
-                sourceNode.loop = true;
-                sourceNode.connect(destination);
-                sourceNode.start();
-                
-                // 获取音频轨道
-                const track = destination.stream.getAudioTracks()[0];
-                
-                // 添加到P2P连接
-                const sender = localPeerConnection.addTrack(track, destination.stream);
-                
-                // 保存流信息
-                p2pFileStreams[streamId] = {
-                    sourceNode: sourceNode,
-                    stream: destination.stream,
-                    sender: sender,
-                    filename: selectedFile
-                };
-                
-                addLog(`已发送文件流: ${selectedFile} (ID: ${streamId})`);
-                
-                // 在接收端创建音频标签
-                createP2PAudioTag(destination.stream, streamId, selectedFile);
-                
-            } catch (error) {
-                addLog(`发送文件流失败: ${error.message}`);
-                console.error('发送文件流失败:', error);
-            }
-        }
-        
-        // 创建P2P音频标签
-        function createP2PAudioTag(stream, streamId, filename) {
-            const container = document.getElementById('fileStreamsContainer');
-            
-            const audioItem = document.createElement('div');
-            audioItem.className = 'p2p-audio-item';
-            audioItem.id = `p2p-audio-${streamId}`;
-            
-            const header = document.createElement('div');
-            header.className = 'file-stream-header';
-            
-            const title = document.createElement('h4');
-            title.textContent = `文件流: ${filename}`;
-            header.appendChild(title);
-            
-            const controls = document.createElement('div');
-            controls.className = 'file-stream-controls';
-            
-            const toggleButton = document.createElement('button');
-            toggleButton.textContent = '暂停播放';
-            toggleButton.onclick = () => toggleP2PStream(streamId);
-            
-            const removeButton = document.createElement('button');
-            removeButton.textContent = '移除';
-            removeButton.onclick = () => removeP2PStream(streamId);
-            
-            controls.appendChild(toggleButton);
-            controls.appendChild(removeButton);
-            header.appendChild(controls);
-            audioItem.appendChild(header);
-            
-            const audioWrapper = document.createElement('div');
-            audioWrapper.className = 'audio-tag-wrapper';
-            
-            const audio = document.createElement('audio');
-            audio.id = `p2p-audio-player-${streamId}`;
-            audio.autoplay = true;
-            audio.controls = true;
-            audio.srcObject = stream;
-            
-            // 添加错误处理
-            audio.addEventListener('error', (e) => {
-                const error = audio.error;
-                if (error) {
-                    addLog(`P2P音频错误 (${filename}): code ${error.code} - ${error.message}`);
-                } else {
-                    addLog(`P2P音频错误 (${filename}): 未知错误`);
-                }
-            });
-            
-            audioWrapper.appendChild(audio);
-            audioItem.appendChild(audioWrapper);
-            
-            const info = document.createElement('div');
-            info.className = 'stream-info';
-            info.textContent = `流ID: ${streamId}`;
-            audioItem.appendChild(info);
-            
-            container.appendChild(audioItem);
-            addLog(`已创建P2P音频标签: ${filename}`);
-        }
-        
-        // 切换P2P流状态
-        function toggleP2PStream(streamId) {
-            if (!p2pFileStreams[streamId]) return;
-            
-            const audio = document.getElementById(`p2p-audio-player-${streamId}`);
-            const button = document.querySelector(`#p2p-audio-${streamId} .file-stream-controls button:first-child`);
-            
-            if (audio.srcObject) {
-                // 保存原始流
-                p2pFileStreams[streamId].originalStream = audio.srcObject;
-                audio.srcObject = null;
-                button.textContent = '恢复播放';
-                addLog(`已暂停P2P流: ${p2pFileStreams[streamId].filename}`);
-            } else {
-                audio.srcObject = p2pFileStreams[streamId].originalStream || p2pFileStreams[streamId].stream;
-                button.textContent = '暂停播放';
-                addLog(`已恢复P2P流: ${p2pFileStreams[streamId].filename}`);
-            }
-        }
-        
-        // 移除P2P流
-        function removeP2PStream(streamId) {
-            if (!p2pFileStreams[streamId]) return;
-            
-            // 停止音频源
-            if (p2pFileStreams[streamId].sourceNode) {
-                p2pFileStreams[streamId].sourceNode.stop();
-            }
-            
-            // 从P2P连接中移除
-            if (p2pFileStreams[streamId].sender && localPeerConnection) {
-                localPeerConnection.removeTrack(p2pFileStreams[streamId].sender);
-            }
-            
-            // 移除DOM元素
-            const audioItem = document.getElementById(`p2p-audio-${streamId}`);
-            if (audioItem) {
-                audioItem.remove();
-            }
-            
-            // 从存储中移除
-            delete p2pFileStreams[streamId];
-            
-            addLog(`已移除P2P流: ${streamId}`);
-        }
-
-        function playSineWave() {
-            const sampleRate = parseInt(document.getElementById('sampleRate').value);
-            
-            if (audioContext) {
-                audioContext.close();
-            }
-            
-            audioContext = new (window.AudioContext || window.webkitAudioContext)({
-                sampleRate: sampleRate
-            });
-            
-            oscillator = audioContext.createOscillator();
-            
-            oscillator.type = 'sine';
-            oscillator.frequency.setValueAtTime(440, audioContext.currentTime);
-            
-            oscillator.connect(audioContext.destination);
-            
-            oscillator.start();
-            addLog(`Started sine wave at ${sampleRate}Hz sample rate`);
-        }
-
-        function stopSineWave() {
-            if (oscillator) {
-                oscillator.stop();
-                oscillator.disconnect();
-                oscillator = null;
-            }
-            if (audioContext) {
-                audioContext.close();
-                audioContext = null;
-            }
-            addLog('Stopped sine wave');
-        }
-
-        function autoPlay() {
-            return new Promise((resolve, reject) => {
-                let audioArrayBuffer = new ArrayBuffer(684);
-                let audioInt32 = new Uint32Array(audioArrayBuffer);
-                let header = [
-                    1179011410, 676, 1163280727, 544501094, 16, 65539, 16000, 64000,
-                    2097156, 1635017060, 640,
-                ];
-                audioInt32.set(header, 0);
-
-                let blob = new Blob([audioInt32], { type: 'audio/wav' });
-                let blobURL = window.URL.createObjectURL(blob);
-                let audio = new Audio(blobURL);
-
-                audio.addEventListener('canplaythrough', () => {
-                    audio.play()
-                        .then(() => {
-                            resolve(true);
-                        })
-                        .catch((ex) => {
-                            addLog('Unable to auto play audio: ' + ex);
-                            reject(ex);
-                        })
-                        .finally(() => {
-                            window.URL.revokeObjectURL(blobURL);
-                        });
-                });
-
-                if (audio.load) {
-                    audio.load();
-                }
-            });
-        }
-
-        async function getMicrophoneList() {
-            try {
-                const devices = await navigator.mediaDevices.enumerateDevices();
-                const micSelect = document.getElementById('micSelect');
-
-                micSelect.innerHTML = '<option value="">选择麦克风设备...</option>';
-                
-                devices.forEach(device => {
-                    if (device.kind === 'audioinput') {
-                        const option = document.createElement('option');
-                        option.value = device.deviceId;
-                        option.text = device.label || `麦克风 ${micSelect.length + 1}`;
-                        micSelect.appendChild(option);
-                    }
-                });
-                addLog(`发现 ${devices.filter(d => d.kind === 'audioinput').length} 个麦克风设备`);
-            } catch (error) {
-                addLog(`获取麦克风列表失败: ${error.message}`);
-                console.error('获取麦克风列表失败:', error);
-            }
-        }
-
-        function initDeviceSelection() {
-            const micSelect = document.getElementById('micSelect');
-            const refreshButton = document.getElementById('refreshMicList');
-
-            micSelect.addEventListener('change', (e) => {
-                selectedMicId = e.target.value;
-                if (selectedMicId) {
-                    addLog(`选择麦克风: ${e.target.options[e.target.selectedIndex].text}`);
-                }
-            });
-
-            refreshButton.addEventListener('click', getMicrophoneList);
-            getMicrophoneList();
-        }
-
-        async function startRecording() {
-            if (!selectedMicId) {
-                selectedMicId = 'default';
-            }
-
-            const aecEnabled = document.getElementById('aecCheckbox').checked;
-            const agcEnabled = document.getElementById('agcCheckbox').checked;
-            const nsEnabled = document.getElementById('nsCheckbox').checked;
-
-            try {
-                oldStream = stream;
-                stream = await navigator.mediaDevices.getUserMedia({ 
-                    audio: {
-                        deviceId: { exact: selectedMicId },
-                        echoCancellation: aecEnabled,
-                        noiseSuppression: nsEnabled,
-                        autoGainControl: agcEnabled,
-                        latency: 0,
-                        channelCount: 2,
-                        sampleRate: 48000
-                    } 
-                });
-                
-                // 保存原始流
-                originalStream = stream.clone();
-                
-                const audioTrack = stream?.getAudioTracks()[0];
-                micId = audioTrack.deviceId;
-                micLabel = audioTrack.label;
-                
-                document.getElementById('stopRecordButton').disabled = false;
-                document.getElementById('stopOldRecordButton').disabled = false;
-                addLog(`开始采集 - 使用设备: ${micLabel}`);
-                addLog(`音频处理设置 - AEC: ${aecEnabled}, AGC: ${agcEnabled}, NS: ${nsEnabled}`);
-                addLog(`采集的stream: ${stream.id}`);
-            } catch (error) {
-                addLog(`录音失败: ${error.message}`);
-                console.error('Error starting recording:', error);
-            }
-        }
-
-        function stopRecording() {
-            if (stream) {
-                stream.getTracks().forEach(track => track.stop());
-                addLog('stream 已停止'+ stream.id);
-                document.getElementById('startRecordButton').disabled = false;
-                document.getElementById('stopRecordButton').disabled = true;
-                stream = null;
-            }
-        }
-
-        function stopOldRecording() {
-            if (oldStream) {
-                oldStream.getTracks().forEach(track => track.stop());
-                addLog('old stream 已停止' + oldStream.id);
-                document.getElementById('stopOldRecordButton').disabled = true;
-                oldStream = null;
-            }
-        }
-        
-        // P2P连接相关函数
-        async function startP2PConnection() {
-            try {
-                // 创建本地和远程PeerConnection
-                localPeerConnection = new RTCPeerConnection();
-                remotePeerConnection = new RTCPeerConnection();
-                
-                // 添加本地音频轨道
-                if (stream) {
-                    stream.getTracks().forEach(track => {
-                        localPeerConnection.addTrack(track, stream);
-                    });
-                }
-                
-                // 设置ICE候选交换
-                localPeerConnection.onicecandidate = e => {
-                    if (e.candidate) {
-                        remotePeerConnection.addIceCandidate(e.candidate);
-                    }
-                };
-                
-                remotePeerConnection.onicecandidate = e => {
-                    if (e.candidate) {
-                        localPeerConnection.addIceCandidate(e.candidate);
-                    }
-                };
-                
-                // 处理远程媒体流
-                remotePeerConnection.ontrack = e => {
-                    if (e.streams && e.streams[0]) {
-                        p2pAudio.srcObject = e.streams[0];
-                        addLog('P2P连接成功，开始传输音频');
-                    }
-                };
-                
-                // 创建Offer
-                const offer = await localPeerConnection.createOffer();
-                await localPeerConnection.setLocalDescription(offer);
-                
-                // 设置远程描述
-                await remotePeerConnection.setRemoteDescription(offer);
-                
-                // 创建Answer
-                const answer = await remotePeerConnection.createAnswer();
-                await remotePeerConnection.setLocalDescription(answer);
-                
-                // 设置本地描述
-                await localPeerConnection.setRemoteDescription(answer);
-                
-                addLog('P2P连接已建立');
-            } catch (error) {
-                addLog(`P2P连接失败: ${error.message}`);
-                console.error('P2P连接错误:', error);
-            }
-        }
-        
-        function stopP2PConnection() {
-            if (localPeerConnection) {
-                localPeerConnection.close();
-                localPeerConnection = null;
-            }
-            if (remotePeerConnection) {
-                remotePeerConnection.close();
-                remotePeerConnection = null;
-            }
-            if (p2pAudio.srcObject) {
-                p2pAudio.srcObject = null;
-            }
-            
-            // 停止所有文件流
-            for (const streamId in p2pFileStreams) {
-                removeP2PStream(streamId);
-            }
-            
-            addLog('P2P连接已关闭');
-        }
-        
-        // 设置srcObject为null
-        function setSrcObjectNull() {
-            originalStream = p2pAudio.srcObject;
-            p2pAudio.srcObject = null;
-            addLog('已将p2pAudio的srcObject设置为null');
-        }
-        
-        // 设置srcObject为原始流
-        function setSrcObjectOriginal() {
-            if (originalStream) {
-                p2pAudio.srcObject = originalStream;
-                addLog('已将p2pAudio的srcObject设置为原始流');
-            } else {
-                addLog('没有可用的原始流');
-            }
-        }
-
-        function cleanup() {
-            if (sourceNode) {
-                sourceNode.stop();
-                sourceNode.disconnect();
-            }
-            if (audioContext) {
-                audioContext.close();
-                audioContext = null;
-            }
-            if (audioContextForFiles) {
-                audioContextForFiles.close();
-                audioContextForFiles = null;
-            }
-            if (oscillator) {
-                oscillator.stop();
-                oscillator.disconnect();
-                oscillator = null;
-            }
-            audioBuffer = null;
-            isPlaying = false;
-            
-            // 清理P2P连接
-            stopP2PConnection();
-            
-            addLog('资源已清理');
-        }
-
-        window.addEventListener('load', () => {
-            initDeviceSelection();
-            document.getElementById('createAudioTagButton').addEventListener('click', createAudioTag);
-            // 新增：添加发送文件流按钮事件
-            document.getElementById('sendFileStreamButton').addEventListener('click', sendFileStream);
-            document.getElementById('autoPlayButton').addEventListener('click', autoPlay);
-            document.getElementById('startRecordButton').addEventListener('click', startRecording);
-            document.getElementById('stopRecordButton').addEventListener('click', stopRecording);
-            document.getElementById('stopOldRecordButton').addEventListener('click', stopOldRecording);
-            document.getElementById('playSineWave').addEventListener('click', playSineWave);
-            document.getElementById('stopSineWave').addEventListener('click', stopSineWave);
-            
-            // P2P按钮事件监听
-            document.getElementById('startP2P').addEventListener('click', startP2PConnection);
-            document.getElementById('stopP2P').addEventListener('click', stopP2PConnection);
-            
-            // 新增的srcObject控制按钮
-            document.getElementById('setSrcNull').addEventListener('click', setSrcObjectNull);
-            document.getElementById('setSrcOriginal').addEventListener('click', setSrcObjectOriginal);
         });
-        window.addEventListener('unload', cleanup);
-    </script>
+
+        if (audio.load) {
+          audio.load();
+        }
+      });
+    }
+
+    async function getMicrophoneList() {
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const micSelect = document.getElementById('micSelect');
+
+        micSelect.innerHTML = '<option value="">select microphone...</option>';
+
+        devices.forEach(device => {
+          if (device.kind === 'audioinput') {
+            const option = document.createElement('option');
+            option.value = device.deviceId;
+            option.text = device.label || `麦克风 ${micSelect.length + 1}`;
+            micSelect.appendChild(option);
+          }
+        });
+        addLog(`发现 ${devices.filter(d => d.kind === 'audioinput').length} 个麦克风设备`);
+      } catch (error) {
+        addLog(`获取麦克风列表失败: ${error.message}`);
+        console.error('获取麦克风列表失败:', error);
+      }
+    }
+
+    function initDeviceSelection() {
+      const micSelect = document.getElementById('micSelect');
+      const refreshButton = document.getElementById('refreshMicList');
+
+      micSelect.addEventListener('change', (e) => {
+        selectedMicId = e.target.value;
+        if (selectedMicId) {
+          addLog(`选择麦克风: ${e.target.options[e.target.selectedIndex].text}`);
+        }
+      });
+
+      refreshButton.addEventListener('click', getMicrophoneList);
+      getMicrophoneList();
+    }
+
+    async function startRecording() {
+      if (!selectedMicId) {
+        selectedMicId = 'default';
+      }
+
+      const aecEnabled = document.getElementById('aecCheckbox').checked;
+      const agcEnabled = document.getElementById('agcCheckbox').checked;
+      const nsEnabled = document.getElementById('nsCheckbox').checked;
+
+      try {
+        oldStream = stream;
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            deviceId: { exact: selectedMicId },
+            echoCancellation: aecEnabled,
+            noiseSuppression: nsEnabled,
+            autoGainControl: agcEnabled,
+            latency: 0,
+            channelCount: 2,
+            sampleRate: 48000
+          }
+        });
+
+        // 保存原始流
+        originalStream = stream.clone();
+
+        const audioTrack = stream?.getAudioTracks()[0];
+        micId = audioTrack.deviceId;
+        micLabel = audioTrack.label;
+
+        document.getElementById('stopRecordButton').disabled = false;
+        document.getElementById('stopOldRecordButton').disabled = false;
+        addLog(`开始采集 - 使用设备: ${micLabel}`);
+        addLog(`音频处理设置 - AEC: ${aecEnabled}, AGC: ${agcEnabled}, NS: ${nsEnabled}`);
+        addLog(`采集的stream: ${stream.id}`);
+      } catch (error) {
+        addLog(`录音失败: ${error.message}`);
+        console.error('Error starting recording:', error);
+      }
+    }
+
+    function stopRecording() {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+        addLog('stream 已停止' + stream.id);
+        document.getElementById('startRecordButton').disabled = false;
+        document.getElementById('stopRecordButton').disabled = true;
+        stream = null;
+      }
+    }
+
+    function stopOldRecording() {
+      if (oldStream) {
+        oldStream.getTracks().forEach(track => track.stop());
+        addLog('old stream 已停止' + oldStream.id);
+        document.getElementById('stopOldRecordButton').disabled = true;
+        oldStream = null;
+      }
+    }
+
+    // P2P连接相关函数
+    async function startP2PConnection() {
+      try {
+        // 创建本地和远程PeerConnection
+        localPeerConnection = new RTCPeerConnection();
+        remotePeerConnection = new RTCPeerConnection();
+
+        // 添加本地音频轨道
+        if (stream) {
+          stream.getTracks().forEach(track => {
+            localPeerConnection.addTrack(track, stream);
+          });
+        }
+
+        // 设置ICE候选交换
+        localPeerConnection.onicecandidate = e => {
+          if (e.candidate) {
+            remotePeerConnection.addIceCandidate(e.candidate);
+          }
+        };
+
+        remotePeerConnection.onicecandidate = e => {
+          if (e.candidate) {
+            localPeerConnection.addIceCandidate(e.candidate);
+          }
+        };
+        // 处理远程音频流
+        remotePeerConnection.ontrack = e => {
+          if (e.streams && e.streams.length > 0) {
+            e.streams.forEach(stream => {
+              createP2PAudioTag(stream, stream.id, stream.id);
+              addLog(`receive audio stream from remote peer, stream id: ${stream.id}`);
+            });
+          }
+        };
+
+        // 创建Offer
+        const offer = await localPeerConnection.createOffer();
+        await localPeerConnection.setLocalDescription(offer);
+
+        // 设置远程描述
+        await remotePeerConnection.setRemoteDescription(offer);
+
+        // 创建Answer
+        const answer = await remotePeerConnection.createAnswer();
+        await remotePeerConnection.setLocalDescription(answer);
+
+        // 设置本地描述
+        await localPeerConnection.setRemoteDescription(answer);
+
+        addLog('p2p connection established successfully');
+      } catch (error) {
+        addLog(`create p2p connection failed: ${error.message}`);
+      }
+    }
+
+    function stopP2PConnection() {
+      if (localPeerConnection) {
+        localPeerConnection.close();
+        localPeerConnection = null;
+      }
+      if (remotePeerConnection) {
+        remotePeerConnection.close();
+        remotePeerConnection = null;
+      }
+      if (p2pAudio?.srcObject) {
+        p2pAudio.srcObject = null;
+      }
+
+      // 停止所有文件流
+      for (const streamId in remoteP2pFileStreams) {
+        removeP2PStream(streamId);
+      }
+
+      addLog('P2P连接已关闭');
+    }
+
+    // 设置srcObject为null
+    function setSrcObjectNull() {
+      originalStream = p2pAudio.srcObject;
+      p2pAudio.srcObject = null;
+      addLog('已将p2pAudio的srcObject设置为null');
+    }
+
+    // 设置srcObject为原始流
+    function setSrcObjectOriginal() {
+      if (originalStream) {
+        p2pAudio.srcObject = originalStream;
+        addLog('已将p2pAudio的srcObject设置为原始流');
+      } else {
+        addLog('没有可用的原始流');
+      }
+    }
+
+    function cleanup() {
+      if (sourceNode) {
+        sourceNode.stop();
+        sourceNode.disconnect();
+      }
+      if (audioContext) {
+        audioContext.close();
+        audioContext = null;
+      }
+      if (audioContextForFiles) {
+        audioContextForFiles.close();
+        audioContextForFiles = null;
+      }
+      if (oscillator) {
+        oscillator.stop();
+        oscillator.disconnect();
+        oscillator = null;
+      }
+      audioBuffer = null;
+      isPlaying = false;
+
+      // 清理P2P连接
+      stopP2PConnection();
+
+      addLog('资源已清理');
+    }
+
+    window.addEventListener('load', () => {
+      initDeviceSelection();
+      document.getElementById('createAudioTagButton').addEventListener('click', createAudioTag);
+      // 新增：添加发送文件流按钮事件
+      document.getElementById('sendFileStreamButton').addEventListener('click', sendFileStream);
+      document.getElementById('autoPlayButton').addEventListener('click', autoPlay);
+      document.getElementById('startRecordButton').addEventListener('click', startRecording);
+      document.getElementById('stopRecordButton').addEventListener('click', stopRecording);
+      document.getElementById('stopOldRecordButton').addEventListener('click', stopOldRecording);
+      document.getElementById('playSineWave').addEventListener('click', playSineWave);
+      document.getElementById('stopSineWave').addEventListener('click', stopSineWave);
+
+      // P2P按钮事件监听
+      document.getElementById('startP2P').addEventListener('click', startP2PConnection);
+      document.getElementById('stopP2P').addEventListener('click', stopP2PConnection);
+
+      // 新增的srcObject控制按钮
+      // document.getElementById('setSrcNull').addEventListener('click', setSrcObjectNull);
+      // document.getElementById('setSrcOriginal').addEventListener('click', setSrcObjectOriginal);
+    });
+    window.addEventListener('unload', cleanup);
+  </script>
 </body>
+
 </html>
