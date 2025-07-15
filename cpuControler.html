@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CPU Controler</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+        
+        .container {
+            text-align: center;
+            max-width: 400px;
+            width: 100%;
+        }
+        
+        h1 {
+            margin-bottom: 30px;
+        }
+        
+        .stat {
+            margin: 20px 0;
+            font-size: 24px;
+        }
+        
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin: 30px 0;
+        }
+        
+        .btn {
+            padding: 12px 30px;
+            font-size: 16px;
+        }
+        
+        .info {
+            margin-top: 30px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>CPU Usage Controller</h1>
+        
+        <div class="stat">
+            Active workers: <span id="worker-count">0</span>
+        </div>
+        
+        <div class="controls">
+            <button class="btn" id="increase-btn">
+                increase usage
+            </button>
+            <button class="btn" id="decrease-btn" disabled>
+                decrease usage
+            </button>
+        </div>
+        
+        <div class="info">
+            <p>Each thread will occupy a CPU core to perform computing tasks</p>
+        </div>
+    </div>
+
+    <script>
+        // 获取CPU核心数
+        const coreCount = navigator.hardwareConcurrency || 4;
+        
+        // 状态变量
+        let activeWorkers = 0;
+        const workers = [];
+        
+        // 创建Web Worker
+        function createWorker() {
+            const workerCode = `
+                // 模拟CPU密集型计算
+                function calculatePrimes(iterations) {
+                    const primes = [];
+                    for (let i = 0; i < iterations; i++) {
+                        let candidate = i * (i % 100 + 1);
+                        let isPrime = true;
+                        
+                        for (let c = 2; c <= Math.sqrt(candidate); c++) {
+                            if (candidate % c === 0) {
+                                isPrime = false;
+                                break;
+                            }
+                        }
+                        
+                        if (isPrime && candidate > 1) {
+                            primes.push(candidate);
+                        }
+                    }
+                    return primes;
+                }
+                
+                self.onmessage = function(e) {
+                    if (e.data === 'start') {
+                        function run() {
+                            calculatePrimes(500000);
+                            setTimeout(run, 0);
+                        }
+                        run();
+                    }
+                };
+            `;
+            
+            const blob = new Blob([workerCode], { type: 'application/javascript' });
+            const worker = new Worker(URL.createObjectURL(blob));
+            
+            worker.postMessage('start');
+            workers.push(worker);
+            activeWorkers++;
+            
+            updateDisplay();
+        }
+        
+        // 停止Web Worker
+        function stopWorker() {
+            if (activeWorkers <= 0) return;
+            
+            const worker = workers.pop();
+            worker.terminate();
+            activeWorkers--;
+            
+            updateDisplay();
+        }
+        
+        // 更新显示
+        function updateDisplay() {
+            document.getElementById('worker-count').textContent = activeWorkers;
+            document.getElementById('decrease-btn').disabled = activeWorkers === 0;
+        }
+        
+        document.getElementById('increase-btn').addEventListener('click', createWorker);
+        document.getElementById('decrease-btn').addEventListener('click', stopWorker);
+        
+        updateDisplay();
+    </script>
+</body>
+</html>
