@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Auto Play Test Demo</title>
+  <style>
+    body {
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+    }
+    
+    .button-container {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      margin-top: 30px;
+    }
+    
+    button {
+      padding: 15px 30px;
+      font-size: 16px;
+    }
+    
+    .status {
+      margin-top: 20px;
+      padding: 15px;
+    }
+    
+    .status-item {
+      margin: 10px 0;
+      padding: 8px;
+    }
+    
+    .timer {
+      margin-top: 20px;
+      padding: 15px;
+      display: none;
+    }
+    
+    .timer.active {
+      display: block;
+    }
+    
+    .countdown {
+      font-size: 24px;
+      margin: 10px 0;
+    }
+    
+    .progress-bar {
+      width: 100%;
+      height: 10px;
+      margin-top: 10px;
+    }
+    
+    .progress-fill {
+      height: 100%;
+    }
+  </style>
+</head>
+<body>
+  <h1>🎵 Auto Play Test Demo</h1>
+  
+  <div class="button-container">
+    <button id="btn-test1" class="btn-test1">
+      Test 1: Play test1.mp3 → After 1min play test2.mp3
+    </button>
+    <button id="btn-test2" class="btn-test2">
+      Test 2: Play test1.mp3 → After 2min play test3.mp3
+    </button>
+    <button id="btn-test3" class="btn-test3">
+      Test 3: Play test1.mp3 → After 3min play test3.mp3
+    </button>
+  </div>
+  
+  <div class="timer" id="timer">
+    <div>Time Remaining: <span id="countdown">00:00</span></div>
+    <div class="progress-bar">
+      <div class="progress-fill" id="progress"></div>
+    </div>
+  </div>
+  
+  <div class="status" id="status"></div>
+  
+  <script>
+    const btnTest1 = document.getElementById('btn-test1');
+    const btnTest2 = document.getElementById('btn-test2');
+    const btnTest3 = document.getElementById('btn-test3');
+    const timerDiv = document.getElementById('timer');
+    const countdownSpan = document.getElementById('countdown');
+    const progressBar = document.getElementById('progress');
+    const statusDiv = document.getElementById('status');
+    
+    let countdownInterval = null;
+    let currentTest = null;
+    let audioContext = null;
+    
+    function logStatus(message, isError = false) {
+      const timestamp = new Date().toLocaleTimeString();
+      const statusItem = document.createElement('div');
+      statusItem.className = 'status-item';
+      statusItem.style.borderLeftColor = isError ? '#f44336' : '#4CAF50';
+      statusItem.textContent = `[${timestamp}] ${message}`;
+      statusDiv.appendChild(statusItem);
+      statusDiv.scrollTop = statusDiv.scrollHeight;
+    }
+    
+    function formatTime(seconds) {
+      const mins = Math.floor(seconds / 60);
+      const secs = seconds % 60;
+      return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+    
+    function startCountdown(totalSeconds, callback) {
+      let remaining = totalSeconds;
+      
+      timerDiv.classList.add('active');
+      
+      countdownInterval = setInterval(() => {
+        remaining--;
+        countdownSpan.textContent = formatTime(remaining);
+        progressBar.style.width = `${((totalSeconds - remaining) / totalSeconds) * 100}%`;
+        
+        if (remaining <= 0) {
+          clearInterval(countdownInterval);
+          countdownInterval = null;
+          callback();
+        }
+      }, 1000);
+    }
+    
+    function stopCountdown() {
+      if (countdownInterval) {
+        clearInterval(countdownInterval);
+        countdownInterval = null;
+      }
+      timerDiv.classList.remove('active');
+      countdownSpan.textContent = '00:00';
+      progressBar.style.width = '0%';
+    }
+    
+    // Create audio file as MediaStream and play via PeerConnection
+    function playAudioViaPeerConnection(src, label) {
+      return new Promise(async (resolve, reject) => {
+        try {
+          logStatus(`Decoding MP3 file: ${src}`);
+          
+          // Create or get audio context (created on user click)
+          if (!audioContext) {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            logStatus(`AudioContext created (state: ${audioContext.state})`);
+          }
+          
+          // Resume audio context if needed
+          if (audioContext.state === 'suspended') {
+            await audioContext.resume();
+            logStatus(`AudioContext resumed (state: ${audioContext.state})`);
+          }
+          
+          // Fetch and decode the MP3 file
+          const response = await fetch(src);
+          const arrayBuffer = await response.arrayBuffer();
+          const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+          
+          logStatus(`MP3 file decoded successfully, length: ${audioBuffer.duration.toFixed(2)}s`);
+          
+          // Create an AudioBufferSourceNode to play the decoded audio
+          const sourceNode = audioContext.createBufferSource();
+          sourceNode.buffer = audioBuffer;
+          sourceNode.loop = false; // Loop the audio
+          
+          // Create a MediaStreamDestination to get a stream
+          const dest = audioContext.createMediaStreamDestination();
+          sourceNode.connect(dest);
+          
+          // Start playing the audio buffer
+          sourceNode.start(0);
+          
+          // Get the stream
+          const stream = dest.stream;
+          
+          // Create a PeerConnection to simulate receiving the stream
+          const pc = new RTCPeerConnection({
+          });
+          
+          // Add the stream tracks to peer connection
+          stream.getTracks().forEach(track => {
+            pc.addTrack(track, stream);
+          });
+          
+          // Create receiving peer connection
+          const receivingPC = new RTCPeerConnection({
+          });
+          
+          // Handle incoming stream on receiving side
+          receivingPC.ontrack = (event) => {
+            logStatus(`Received stream track for ${label}`);
+            const [remoteStream] = event.streams;
+            
+            // Create audio element to play the received stream
+            const audioElement = document.createElement('audio');
+            audioElement.srcObject = remoteStream;
+            audioElement.autoplay = true;
+            audioElement.controls = false;
+            audioElement.muted = false;
+            
+            // Add to DOM
+            document.body.appendChild(audioElement);
+            
+            // Try to play and resolve
+            audioElement.play().then(() => {
+              logStatus(`✓ ${label} started playing via PeerConnection`);
+              resolve(audioElement);
+            }).catch(e => {
+              logStatus(`Auto-play blocked: ${e.message}`);
+              resolve(audioElement);
+
+            });
+          };
+          
+          // Handle ICE candidates for proper connection
+          receivingPC.onicecandidate = (event) => {
+            if (event.candidate) {
+              pc.addIceCandidate(event.candidate);
+            }
+          };
+          
+          pc.onicecandidate = (event) => {
+            if (event.candidate) {
+              receivingPC.addIceCandidate(event.candidate);
+            }
+          };
+          
+          // Create offer and answer
+          const offer = await pc.createOffer();
+          await pc.setLocalDescription(offer);
+          await receivingPC.setRemoteDescription(offer);
+          
+          const answer = await receivingPC.createAnswer();
+          await receivingPC.setLocalDescription(answer);
+          await pc.setRemoteDescription(answer);
+          
+          logStatus(`PeerConnection established for ${label}`);
+          
+        } catch (error) {
+          logStatus(`✗ Failed to play ${label} via PeerConnection: ${error.message}`, true);
+          reject(error);
+        }
+      });
+    }
+
+    function autoPlay() {
+      return new Promise((resolve, reject) => {
+        let audioArrayBuffer = new ArrayBuffer(684);
+        let audioInt32 = new Uint32Array(audioArrayBuffer);
+        let header = [
+          1179011410, 676, 1163280727, 544501094, 16, 65539, 16000, 64000,
+          2097156, 1635017060, 640,
+        ];
+        audioInt32.set(header, 0);
+
+        let blob = new Blob([audioInt32], { type: 'audio/wav' });
+        let blobURL = window.URL.createObjectURL(blob);
+        let audio = new Audio(blobURL);
+
+        audio.addEventListener('canplaythrough', () => {
+          audio.play()
+            .then(() => {
+              resolve(true);
+            })
+            .catch((ex) => {
+              logStatus('Unable to auto play audio: ' + ex);
+              reject(ex);
+            })
+            .finally(() => {
+              window.URL.revokeObjectURL(blobURL);
+            });
+        });
+
+        if (audio.load) {
+          audio.load();
+        }
+      });
+    }
+    
+    function playAudio(src, label) {
+      return new Promise((resolve, reject) => {
+        const audio = document.createElement('audio');
+        audio.src = src;
+        audio.autoplay = true;
+        audio.controls = false;
+        audio.muted = false; // unmute to make sure can be play as normal
+        
+        audio.onplay = () => {
+          logStatus(`✓ ${label} started playing`);
+          resolve(audio);
+        };
+        audio.onerror = (e) => {
+          logStatus(`✗ Failed to play ${label}`, true);
+          reject(e);
+        };
+        audio.onended = () => {
+          logStatus(`${label} finished playing`);
+        };
+        
+        // Try to play even with autoplay set
+        audio.play().catch((error) => {
+          logStatus(`✗ Autoplay failed for ${label}. Error: ${error.message}`, true);
+          reject(error);
+        });
+      });
+    }
+    
+    function disableButtons() {
+      btnTest1.disabled = true;
+      btnTest2.disabled = true;
+      btnTest3.disabled = true;
+    }
+    
+    function enableButtons() {
+      btnTest1.disabled = false;
+      btnTest2.disabled = false;
+      btnTest3.disabled = false;
+    }
+    
+    async function runTest(testNumber, delayMinutes, targetFile) {
+      disableButtons();
+      logStatus(`Starting Test ${testNumber}...`);
+      
+      try {
+        // Play test1.mp3
+        // await playAudio('test1.mp3', 'test1.mp3');
+        await autoPlay();
+        
+        // Start countdown
+        const delaySeconds = delayMinutes * 60;
+        logStatus(`Will play ${targetFile} in ${delayMinutes} minute(s)`);
+        
+        startCountdown(delaySeconds, async () => {
+          logStatus(`Time's up! Playing ${targetFile} via PeerConnection...`);
+          try {
+            await playAudioViaPeerConnection(targetFile, targetFile);
+          } catch (error) {
+            logStatus(`Failed to play ${targetFile}`, true);
+          }
+          
+          stopCountdown();
+          // logStatus(`Test ${testNumber} completed`);
+          enableButtons();
+        });
+        
+      } catch (error) {
+        logStatus(`Test ${testNumber} failed`, true);
+        stopCountdown();
+        enableButtons();
+      }
+    }
+    
+    btnTest1.addEventListener('click', () => {
+      currentTest = 1;
+      runTest(1, 0.02, 'test2.mp3');
+    });
+    
+    btnTest2.addEventListener('click', () => {
+      currentTest = 2;
+      runTest(2, 2, 'test3.mp3');
+    });
+    
+    btnTest3.addEventListener('click', () => {
+      currentTest = 3;
+      runTest(3, 3, 'test3.mp3');
+    });
+    runTest(1, 0.02, 'test2.mp3');
+    
+    // Initialize
+    logStatus('Demo ready. Click a button to start a test.');
+  </script>
+</body>
+</html>
+
+

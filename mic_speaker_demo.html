@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mic & Speaker Demo</title>
+  <style>
+    body {
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+    }
+    
+    .controls {
+      margin: 20px 0;
+      padding: 20px;
+    }
+    
+    .control-group {
+      margin: 15px 0;
+    }
+    
+    label {
+      display: block;
+      margin-bottom: 5px;
+    }
+    
+    select {
+      width: 100%;
+      padding: 8px;
+      font-size: 14px;
+    }
+    
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      margin: 5px;
+    }
+    
+    .status {
+      margin-top: 20px;
+      padding: 15px;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    
+    .status-item {
+      margin: 5px 0;
+      padding: 5px;
+      font-size: 14px;
+    }
+    
+    .playback-mode {
+      display: flex;
+      gap: 10px;
+      margin: 10px 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>🎤 Mic & Speaker Demo</h1>
+  
+  <div class="controls">
+    <div class="control-group">
+      <label>Playback Mode:</label>
+      <div class="playback-mode">
+        <button id="btn-audio-tag" class="toggle-button">Audio Tag</button>
+        <button id="btn-audio-context" class="toggle-button">Audio Context</button>
+      </div>
+      <div>Current Mode: <strong id="current-mode">Audio Tag</strong></div>
+    </div>
+    
+    <div class="control-group">
+      <label for="mic-select">Microphone:</label>
+      <select id="mic-select"></select>
+    </div>
+    
+    <div class="control-group">
+      <label for="speaker-select">Speaker:</label>
+      <select id="speaker-select"></select>
+    </div>
+    
+    <div class="control-group">
+      <button id="btn-start" class="start-button">Start Capture & Play</button>
+      <button id="btn-stop" class="stop-button" disabled>Stop</button>
+      <button id="btn-auto-switch" class="toggle-button" disabled>Auto Switch Speakers (3s intervals)</button>
+    </div>
+  </div>
+  
+  <div class="status" id="status"></div>
+  
+  <script>
+    const micSelect = document.getElementById('mic-select');
+    const speakerSelect = document.getElementById('speaker-select');
+    const btnStart = document.getElementById('btn-start');
+    const btnStop = document.getElementById('btn-stop');
+    const btnAutoSwitch = document.getElementById('btn-auto-switch');
+    const btnAudioTag = document.getElementById('btn-audio-tag');
+    const btnAudioContext = document.getElementById('btn-audio-context');
+    const currentModeSpan = document.getElementById('current-mode');
+    const statusDiv = document.getElementById('status');
+    
+    let stream = null;
+    let audioElement = null;
+    let audioContext = null;
+    let sourceNode = null;
+    let playbackMode = 'audio-tag';
+    let autoSwitchTimer = null;
+    
+    function logStatus(message, isError = false) {
+      const timestamp = new Date().toLocaleTimeString();
+      const statusItem = document.createElement('div');
+      statusItem.className = 'status-item';
+      statusItem.style.color = isError ? '#f44336' : '#333';
+      statusItem.textContent = `[${timestamp}] ${message}`;
+      statusDiv.appendChild(statusItem);
+      statusDiv.scrollTop = statusDiv.scrollHeight;
+    }
+    
+    // Helper function to change speaker
+    async function changeSpeaker(speakerId, speakerName) {
+      const target = audioElement || audioContext;
+      if (!target) return;
+      
+      if (!target.setSinkId) {
+        logStatus('⚠ setSinkId not supported', true);
+        return;
+      }
+      
+      try {
+        await target.setSinkId(speakerId);
+        logStatus(`✓ Speaker changed to: ${speakerName}`);
+      } catch (error) {
+        logStatus(`Failed to change speaker: ${error.message}`, true);
+      }
+    }
+    
+    // Helper to populate device list
+    function populateDevices(devices, kind, selectElement, label) {
+      const filtered = devices.filter(d => d.kind === kind);
+      filtered.forEach((device, index) => {
+        const option = new Option(
+          device.label || `${label} ${index + 1}`,
+          device.deviceId
+        );
+        selectElement.add(option);
+      });
+      return filtered.length;
+    }
+    
+    // Initialize device lists
+    async function initDevices() {
+      try {
+        const tempStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        tempStream.getTracks().forEach(track => track.stop());
+        
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        micSelect.innerHTML = '';
+        speakerSelect.innerHTML = '';
+        
+        const mics = populateDevices(devices, 'audioinput', micSelect, 'Microphone');
+        const speakers = populateDevices(devices, 'audiooutput', speakerSelect, 'Speaker');
+        
+        logStatus(`Found ${mics} microphone(s) and ${speakers} speaker(s)`);
+      } catch (error) {
+        logStatus(`Failed to enumerate devices: ${error.message}`, true);
+      }
+    }
+    
+    // Start capture and playback
+    async function startPlayback() {
+      try {
+        const micId = micSelect.value;
+        const speakerId = speakerSelect.value;
+        const speakerName = speakerSelect.options[speakerSelect.selectedIndex].text;
+        
+        logStatus(`Starting capture with ${playbackMode === 'audio-tag' ? 'Audio Tag' : 'Audio Context'}...`);
+        
+        // Get microphone stream
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: { deviceId: micId ? { exact: micId } : undefined }
+        });
+        logStatus('✓ Microphone captured');
+        
+        if (playbackMode === 'audio-tag') {
+          // Audio Tag mode
+          audioElement = document.createElement('audio');
+          audioElement.srcObject = stream;
+          audioElement.autoplay = true;
+          audioElement.muted = false;
+          audioElement.style.display = 'none';
+          document.body.appendChild(audioElement);
+          
+          if (speakerId) await changeSpeaker(speakerId, speakerName);
+          await audioElement.play();
+          logStatus('✓ Playing through Audio Tag');
+        } else {
+          // Audio Context mode
+          audioContext = new (window.AudioContext || window.webkitAudioContext)();
+          if (speakerId) await changeSpeaker(speakerId, speakerName);
+          if (audioContext.state === 'suspended') await audioContext.resume();
+          
+          sourceNode = audioContext.createMediaStreamSource(stream);
+          sourceNode.connect(audioContext.destination);
+          
+          logStatus('✓ Playing through Audio Context');
+          logStatus(`AudioContext state: ${audioContext.state}, sampleRate: ${audioContext.sampleRate}Hz`);
+        }
+      } catch (error) {
+        logStatus(`Failed to start: ${error.message}`, true);
+        throw error;
+      }
+    }
+    
+    // Stop playback
+    function stopPlayback() {
+      logStatus('Stopping playback...');
+      
+      if (audioElement) {
+        audioElement.pause();
+        audioElement.srcObject = null;
+        audioElement.remove();
+        audioElement = null;
+      }
+      
+      if (sourceNode) {
+        sourceNode.disconnect();
+        sourceNode = null;
+      }
+      
+      if (audioContext) {
+        audioContext.close();
+        audioContext = null;
+      }
+      
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+        stream = null;
+      }
+      
+      logStatus('✓ Stopped');
+    }
+    
+    // Toggle button states
+    function setButtonStates(isPlaying) {
+      btnStart.disabled = isPlaying;
+      btnStop.disabled = !isPlaying;
+      btnAutoSwitch.disabled = !isPlaying;
+      btnAudioTag.disabled = isPlaying;
+      btnAudioContext.disabled = isPlaying;
+      micSelect.disabled = isPlaying;
+    }
+    
+    // Start button handler
+    btnStart.addEventListener('click', async () => {
+      try {
+        setButtonStates(true);
+        await startPlayback();
+      } catch (error) {
+        setButtonStates(false);
+      }
+    });
+    
+    // Stop button handler
+    btnStop.addEventListener('click', () => {
+      stopPlayback();
+      if (autoSwitchTimer) {
+        clearTimeout(autoSwitchTimer);
+        autoSwitchTimer = null;
+      }
+      setButtonStates(false);
+    });
+    
+    // Mode toggle buttons
+    function setMode(mode, label) {
+      playbackMode = mode;
+      currentModeSpan.textContent = label;
+      logStatus(`Switched to ${label} mode`);
+    }
+    
+    btnAudioTag.addEventListener('click', () => setMode('audio-tag', 'Audio Tag'));
+    btnAudioContext.addEventListener('click', () => setMode('audio-context', 'Audio Context'));
+    
+    // Speaker change handler
+    speakerSelect.addEventListener('change', () => 
+      changeSpeaker(speakerSelect.value, speakerSelect.selectedOptions[0].text)
+    );
+    
+    // Auto switch speakers button handler
+    btnAutoSwitch.addEventListener('click', () => {
+      if (speakerSelect.options.length < 3) {
+        logStatus('⚠ Need at least 3 speakers to auto-switch', true);
+        return;
+      }
+      
+      logStatus('Starting auto-switch: 2nd speaker in 3s, 3rd speaker in 6s');
+      btnAutoSwitch.disabled = true;
+      
+      const switchToSpeaker = (index, delay) => {
+        autoSwitchTimer = setTimeout(() => {
+          speakerSelect.selectedIndex = index;
+          changeSpeaker(speakerSelect.value, speakerSelect.options[index].text);
+          if (index === 2) {
+            logStatus('✓ Auto-switch complete');
+            autoSwitchTimer = null;
+          } else {
+            switchToSpeaker(index + 1, 3000);
+          }
+        }, delay);
+      };
+      
+      switchToSpeaker(1, 3000);
+    });
+    
+    // Initialize on load
+    window.addEventListener('load', () => {
+      initDevices();
+      logStatus('Demo ready. Select devices and click Start.');
+    });
+  </script>
+</body>
+</html>
+
