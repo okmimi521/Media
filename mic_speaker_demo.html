@@ -288,23 +288,43 @@
     
     // Auto switch speakers button handler
     btnAutoSwitch.addEventListener('click', () => {
-      if (speakerSelect.options.length < 3) {
-        logStatus('⚠ Need at least 3 speakers to auto-switch', true);
+      if (speakerSelect.options.length < 2) {
+        logStatus('⚠ Need at least 2 speakers to auto-switch', true);
         return;
       }
       
-      logStatus('Starting auto-switch: 2nd speaker in 3s, 3rd speaker in 6s');
+      logStatus('Starting auto-switch: 2nd speaker in 3s, back to 1st speaker in 6s');
       btnAutoSwitch.disabled = true;
       
       const switchToSpeaker = (index, delay) => {
-        autoSwitchTimer = setTimeout(() => {
+        autoSwitchTimer = setTimeout(async () => {
           speakerSelect.selectedIndex = index;
-          changeSpeaker(speakerSelect.value, speakerSelect.options[index].text);
-          if (index === 2) {
-            logStatus('✓ Auto-switch complete');
-            autoSwitchTimer = null;
-          } else {
-            switchToSpeaker(index + 1, 3000);
+          const speakerId = speakerSelect.value;
+          const speakerName = speakerSelect.options[index].text;
+          
+          const target = audioElement || audioContext;
+          if (!target) {
+            logStatus('⚠ Auto-switch failed: No audio target', true);
+            return;
+          }
+          
+          if (!target.setSinkId) {
+            logStatus('⚠ Auto-switch failed: setSinkId not supported', true);
+            return;
+          }
+          
+          try {
+            await target.setSinkId(speakerId);
+            logStatus(`✓ Auto-switch success: Changed to ${speakerName}`);
+            
+            if (index === 0) {
+              logStatus('✓ Auto-switch complete');
+              autoSwitchTimer = null;
+            } else {
+              switchToSpeaker(0, 3000);
+            }
+          } catch (error) {
+            logStatus(`✗ Auto-switch failed: ${error.message}`, true);
           }
         }, delay);
       };
