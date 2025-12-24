@@ -331,6 +331,7 @@
             audio.srcObject = new MediaStream();
           }
         }
+        
         audio.play()
       };
 
@@ -690,7 +691,7 @@
 
     async function startRecording() {
       if (!selectedMicId) {
-        selectedMicId = 'default';
+        selectedMicId = '';
       }
 
       const aecEnabled = document.getElementById('aecCheckbox').checked;
@@ -717,6 +718,19 @@
         const audioTrack = stream?.getAudioTracks()[0];
         micId = audioTrack.deviceId;
         micLabel = audioTrack.label;
+
+        // 添加 track 事件监听
+        audioTrack.onmute = () => {
+          addLog(`audio track muted: ${micLabel}`);
+        };
+
+        audioTrack.onunmute = () => {
+          addLog(`audio track unmuted: ${micLabel}`);
+        };
+
+        audioTrack.onended = () => {
+          addLog(`audio track ended: ${micLabel}`);
+        };
 
         document.getElementById('stopRecordButton').disabled = false;
         document.getElementById('stopOldRecordButton').disabled = false;
