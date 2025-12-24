@@ -690,9 +690,9 @@
     }
 
     async function startRecording() {
-      if (!selectedMicId) {
-        selectedMicId = '';
-      }
+      // if (!selectedMicId) {
+      //   selectedMicId = '';
+      // }
 
       const aecEnabled = document.getElementById('aecCheckbox').checked;
       const agcEnabled = document.getElementById('agcCheckbox').checked;
@@ -702,7 +702,7 @@
         oldStream = stream;
         stream = await navigator.mediaDevices.getUserMedia({
           audio: {
-            deviceId: { exact: selectedMicId },
+            deviceId: selectedMicId ? { exact: selectedMicId } : undefined,
             echoCancellation: aecEnabled,
             noiseSuppression: nsEnabled,
             autoGainControl: agcEnabled,
