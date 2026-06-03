@@ -33,12 +33,27 @@ function fill(select) {
   if (prev) select.value = prev;
 }
 
-function createCard() {
+// Mirrors RTCAudioPlayer._createAudioTag: build the element manually, keep it
+// uncontrolled/unmuted, and attach it to document.documentElement.
+function createAudioTag(src) {
+  const audioTag = document.createElement('audio');
+  audioTag.src = src;
+  audioTag.autoplay = false;
+  audioTag.controls = false;
+  audioTag.muted = false;
+  audioTag.loop = true;
+  document.documentElement.appendChild(audioTag);
+  return audioTag;
+}
+
+function createCard(defaultSrc) {
   cardCount += 1;
   const id = cardCount;
   console.log(`[createCard] creating Audio #${id}`);
 
   const card = document.createElement('div');
+
+  const initialSrc = defaultSrc || AUDIO_FILES[0].src;
 
   const fileSelect = document.createElement('select');
   AUDIO_FILES.forEach(f => {
@@ -47,14 +62,13 @@ function createCard() {
     o.text = f.label;
     fileSelect.appendChild(o);
   });
+  fileSelect.value = initialSrc;
 
   const speakerSelect = document.createElement('select');
   speakerSelects.push(speakerSelect);
   fill(speakerSelect);
 
-  const audio = document.createElement('audio');
-  audio.loop = true;
-  audio.src = AUDIO_FILES[0].src;
+  const audio = createAudioTag(initialSrc);
 
   const playBtn = document.createElement('button');
   playBtn.textContent = 'Play';
@@ -94,11 +108,11 @@ function createCard() {
     }
   };
 
-  card.append(fileSelect, speakerSelect, playBtn, audio);
+  card.append(fileSelect, speakerSelect, playBtn);
   cardsEl.appendChild(card);
 }
 
-document.getElementById('addBtn').onclick = createCard;
+document.getElementById('addBtn').onclick = () => createCard();
 document.getElementById('refreshBtn').onclick = refreshSpeakers;
 
 // On page load: capture with default mic first, then refresh speaker list.
@@ -109,4 +123,8 @@ navigator.mediaDevices.getUserMedia({ audio: true })
   })
   .catch(err => console.warn('[init] mic request failed:', err))
   .then(refreshSpeakers)
-  .then(createCard);
+  .then(() => {
+    // Two fixed audio tags by default.
+    createCard('../test2.mp3');
+    createCard('../ultrasound/ultrasound_data_48k_buildin_amp20.wav');
+  });
