@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <title>Audio Tag Demo</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 32px 16px;
+    }
+    .toolbar {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .toolbar button {
+      font-size: 16px;
+      padding: 12px 28px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    #cards {
+      width: 100%;
+      max-width: 560px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    #cards > div {
+      width: 100%;
+      box-sizing: border-box;
+      text-align: center;
+      border: 1px solid #ccc;
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+    #cards select { padding: 6px; min-width: 240px; }
+    #cards button { font-size: 15px; padding: 8px 24px; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+    <button id="addBtn">Add Audio Tag</button>
+    <button id="refreshBtn">Refresh Speakers</button>
+  </div>
+  <div id="cards"></div>
+  <script src="audioTagDemo.js"></script>
+</body>
+</html>
