@@ -2,8 +2,9 @@
 
 const AUDIO_FILES = [
   { label: 'ultrasound_12_3838383838_fade5ms_amp20.wav', src: '../ultrasound/ultrasound_12_3838383838_fade5ms_amp20.wav' },
-  { label: 'test3.mp3', src: '../test3.mp3' },
-  { label: 'test2.mp3', src: '../test2.mp3' },
+  // { label: 'test3.mp3', src: '../test3.mp3' },
+  // { label: 'test2.mp3', src: '../test2.mp3' },
+  { label: 'P501_C_english_f2_SWB_48k.wav', src: '../P501_C_english_f2_SWB_48k.wav' },
 ];
 
 const cardsEl = document.getElementById('cards');
@@ -124,6 +125,6 @@ navigator.mediaDevices.getUserMedia({ audio: true })
   .then(refreshSpeakers)
   .then(() => {
     // Two fixed audio tags by default.
-    createCard('../test2.mp3');
+    createCard('../P501_C_english_f2_SWB_48k.wav');
     createCard('../ultrasound/ultrasound_12_3838383838_fade5ms_amp20.wav');
   });
