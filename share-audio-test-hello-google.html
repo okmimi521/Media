@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>share audio test</title>
+</head>
+<body>
+  <div id="status">正在尝试播放…</div>
+
+  <audio id="player" src="hello_google.wav" preload="auto" loop></audio>
+
+  <script>
+    const audio = document.getElementById('player');
+    const statusEl = document.getElementById('status');
+
+    const interactionEvents = ['click', 'touchstart', 'keydown', 'pointerdown'];
+
+    function playOnInteraction() {
+      audio.play()
+        .then(() => { statusEl.textContent = '播放中（用户交互后开始）'; })
+        .catch((err) => { statusEl.textContent = '播放失败：' + err.message; });
+      interactionEvents.forEach((evt) => document.removeEventListener(evt, playOnInteraction));
+    }
+
+    function tryAutoplay() {
+      audio.play()
+        .then(() => { statusEl.textContent = '播放中（自动播放成功）'; })
+        .catch(() => {
+          statusEl.textContent = '自动播放被阻止，等待用户交互…';
+          interactionEvents.forEach((evt) => document.addEventListener(evt, playOnInteraction));
+        });
+    }
+
+    window.addEventListener('DOMContentLoaded', tryAutoplay);
+  </script>
+</body>
+</html>
