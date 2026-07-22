@@ -26,6 +26,23 @@
       margin-top: 10px;
     }
 
+    .speaker-controls {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .speaker-controls label {
+      font-weight: 600;
+    }
+
+    .audio-speaker-label {
+      margin-left: 8px;
+      font-weight: 600;
+    }
+
     select {
       padding: 5px;
       margin: 10px 0;
@@ -135,6 +152,8 @@
     .audio-tag-wrapper {
       display: flex;
       align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
       margin-top: 10px;
     }
 
@@ -161,6 +180,15 @@
       <button id="createAudioTagButton">Create Audio Tag</button>
       <!-- 新增：发送文件流的按钮 -->
       <button id="sendFileStreamButton">Send File Stream via P2P</button>
+    </div>
+
+    <div class="speaker-controls">
+      <label for="speakerSelect">Speaker:</label>
+      <select id="speakerSelect">
+        <option value="">Default speaker</option>
+      </select>
+      <button id="applySpeakerToAllButton">Apply Speaker To All</button>
+      <button id="refreshSpeakerList">刷新 Speaker 列表</button>
     </div>
 
     <div id="audioTagsContainer">
@@ -268,6 +296,9 @@
     let p2pFileStreams = {};
     let audioContextForFiles = null;
     let remoteP2pFileStreams = {};
+    let selectedSpeakerId = '';
+    let speakerDevices = [];
+    const managedAudioTags = {};
 
     function addLog(message) {
       const logsDiv = document.getElementById('logs');
@@ -283,10 +314,145 @@
       logsDiv.insertBefore(logEntry, logsDiv.firstChild);
     }
 
+    function getSpeakerName(speakerId) {
+      if (!speakerId) return 'Default speaker';
+      const speaker = speakerDevices.find(device => device.deviceId === speakerId);
+      return speaker?.label || speakerId;
+    }
+
+    function populateSpeakerSelect(select, selectedValue = '') {
+      select.innerHTML = '';
+      select.appendChild(new Option('Default speaker', ''));
+
+      speakerDevices.forEach((device, index) => {
+        const option = new Option(device.label || `Speaker ${index + 1}`, device.deviceId);
+        select.appendChild(option);
+      });
+
+      if (selectedValue && !speakerDevices.some(device => device.deviceId === selectedValue)) {
+        select.appendChild(new Option(`Missing speaker: ${selectedValue}`, selectedValue));
+      }
+
+      select.value = selectedValue;
+    }
+
+    function refreshAudioTagSpeakerSelects() {
+      Object.values(managedAudioTags).forEach(({ select, sinkId }) => {
+        if (select) {
+          populateSpeakerSelect(select, sinkId || '');
+        }
+      });
+    }
+
+    async function getSpeakerList() {
+      try {
+        if (!navigator.mediaDevices?.enumerateDevices) {
+          addLog('当前浏览器不支持 enumerateDevices');
+          return;
+        }
+
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        speakerDevices = devices.filter(device => device.kind === 'audiooutput');
+
+        const speakerSelect = document.getElementById('speakerSelect');
+        const previousSpeakerId = selectedSpeakerId;
+        populateSpeakerSelect(speakerSelect, previousSpeakerId);
+        selectedSpeakerId = speakerSelect.value;
+        refreshAudioTagSpeakerSelects();
+
+        addLog(`发现 ${speakerDevices.length} 个 Speaker 设备`);
+      } catch (error) {
+        addLog(`获取 Speaker 列表失败: ${error.message}`);
+        console.error('获取 Speaker 列表失败:', error);
+      }
+    }
+
+    async function setAudioTagSpeaker(audio, speakerId, label) {
+      if (!audio) return false;
+
+      if (typeof audio.setSinkId !== 'function') {
+        addLog('当前浏览器不支持 audio.setSinkId，无法选择 Speaker');
+        return false;
+      }
+
+      try {
+        await audio.setSinkId(speakerId);
+        if (managedAudioTags[audio.id]) {
+          managedAudioTags[audio.id].sinkId = speakerId;
+          if (managedAudioTags[audio.id].select) {
+            managedAudioTags[audio.id].select.value = speakerId;
+          }
+        }
+        addLog(`${label || audio.id} speaker -> ${getSpeakerName(speakerId)}`);
+        return true;
+      } catch (error) {
+        addLog(`${label || audio.id} 设置 Speaker 失败: ${error.message}`);
+        return false;
+      }
+    }
+
+    function createAudioTagSpeakerSelect(audio, label) {
+      const select = document.createElement('select');
+      select.className = 'audio-speaker-select';
+      select.title = `Speaker for ${label}`;
+      populateSpeakerSelect(select, selectedSpeakerId);
+      select.addEventListener('change', () => {
+        setAudioTagSpeaker(audio, select.value, label);
+      });
+      return select;
+    }
+
+    function createAudioTagSpeakerControl(audio, label) {
+      const labelElement = document.createElement('label');
+      labelElement.className = 'audio-speaker-label';
+      labelElement.textContent = 'Speaker:';
+
+      const select = createAudioTagSpeakerSelect(audio, label);
+      labelElement.appendChild(select);
+      return { labelElement, select };
+    }
+
+    async function registerAudioTag(audio, label, select) {
+      managedAudioTags[audio.id] = {
+        audio,
+        label,
+        select,
+        sinkId: selectedSpeakerId
+      };
+
+      if (select) {
+        populateSpeakerSelect(select, selectedSpeakerId);
+      }
+
+      if (selectedSpeakerId) {
+        await setAudioTagSpeaker(audio, selectedSpeakerId, label);
+      }
+    }
+
+    function unregisterAudioTag(audio) {
+      if (audio?.id) {
+        delete managedAudioTags[audio.id];
+      }
+    }
+
+    async function applySpeakerToAllAudioTags() {
+      selectedSpeakerId = document.getElementById('speakerSelect').value;
+      const entries = Object.values(managedAudioTags);
+
+      if (entries.length === 0) {
+        addLog(`全局 Speaker 已选择: ${getSpeakerName(selectedSpeakerId)}，当前没有 audio tag`);
+        return;
+      }
+
+      await Promise.all(entries.map(({ audio, label }) => setAudioTagSpeaker(audio, selectedSpeakerId, label)));
+      addLog(`已将全局 Speaker 应用到 ${entries.length} 个 audio tag`);
+    }
+
     function createAudioTag() {
       const audioFileSelect = document.getElementById('audioFileSelect');
       const selectedFile = audioFileSelect.value;
       audioTagCounter++;
+      const currentAudioTagCounter = audioTagCounter;
 
       const containerDiv = document.createElement('div');
       containerDiv.className = 'audio-tag-controls';
@@ -296,6 +462,7 @@
       audio.id = `audioPlayer${audioTagCounter}`;
       audio.loop = true;
       document.documentElement.appendChild(audio);
+      const audioLabel = `Audio Tag ${currentAudioTagCounter}`;
 
       // Add event listeners for auto play test
       audio.addEventListener('canplay', () => {
@@ -322,7 +489,7 @@
 
 
       const playButton = document.createElement('button');
-      playButton.textContent = `Play ${audioTagCounter}`;
+      playButton.textContent = `Play ${currentAudioTagCounter}`;
       playButton.onclick = () => {
         if (audio.src == null || audio.src == "") {
           if (selectedFile != "") {
@@ -331,38 +498,42 @@
             audio.srcObject = new MediaStream();
           }
         }
-        
+
         audio.play()
       };
 
       const stopButton = document.createElement('button');
-      stopButton.textContent = `Stop ${audioTagCounter}`;
+      stopButton.textContent = `Stop ${currentAudioTagCounter}`;
       stopButton.onclick = () => {
         audio.pause();
         audio.currentTime = 0;
         audio.src = '';
-        addLog(`已停止 Audio Tag ${audioTagCounter}`);
+        addLog(`已停止 Audio Tag ${currentAudioTagCounter}`);
       };
 
       const removeButton = document.createElement('button');
-      removeButton.textContent = `Remove ${audioTagCounter}`;
+      removeButton.textContent = `Remove ${currentAudioTagCounter}`;
       removeButton.onclick = () => {
         containerDiv.remove();
         audio.currentTime = 0;
         audio.src = '';
         audio.load();
+        unregisterAudioTag(audio);
         audio.remove();
         audio = null;
-        addLog(`已移除 Audio Tag ${audioTagCounter}`);
+        addLog(`已移除 Audio Tag ${currentAudioTagCounter}`);
       };
+      const { labelElement: speakerLabel, select: speakerSelect } = createAudioTagSpeakerControl(audio, audioLabel);
 
       containerDiv.appendChild(audio);
+      containerDiv.appendChild(speakerLabel);
       containerDiv.appendChild(playButton);
       containerDiv.appendChild(stopButton);
       containerDiv.appendChild(removeButton);
 
       document.getElementById('audioTagsContainer').appendChild(containerDiv);
-      addLog(`已创建新的 Audio Tag ${audioTagCounter} (${selectedFile})`);
+      registerAudioTag(audio, audioLabel, speakerSelect);
+      addLog(`已创建新的 Audio Tag ${currentAudioTagCounter} (${selectedFile})`);
     }
 
     // 在全局变量中增加
@@ -512,6 +683,13 @@
       audio.autoplay = true;
       audio.controls = true;
       audio.srcObject = stream;
+      const audioLabel = `P2P Audio Tag ${streamId}`;
+      if (!remoteP2pFileStreams[streamId]) {
+        remoteP2pFileStreams[streamId] = {
+          originalStream: stream,
+          filename
+        };
+      }
 
       // 添加错误处理
       audio.addEventListener('error', (e) => {
@@ -523,7 +701,9 @@
         }
       });
 
+      const { labelElement: speakerLabel, select: speakerSelect } = createAudioTagSpeakerControl(audio, audioLabel);
       audioWrapper.appendChild(audio);
+      audioWrapper.appendChild(speakerLabel);
       audioItem.appendChild(audioWrapper);
 
       const info = document.createElement('div');
@@ -532,6 +712,7 @@
       audioItem.appendChild(info);
 
       container.appendChild(audioItem);
+      registerAudioTag(audio, audioLabel, speakerSelect);
       addLog(`create audio tag success: ${filename}`);
     }
 
@@ -574,6 +755,8 @@
       // 移除DOM元素
       const audioItem = document.getElementById(`p2p-audio-${streamId}`);
       if (audioItem) {
+        const audio = document.getElementById(`p2p-audio-player-${streamId}`);
+        unregisterAudioTag(audio);
         audioItem.remove();
       }
 
@@ -631,6 +814,9 @@
         let blob = new Blob([audioInt32], { type: 'audio/wav' });
         let blobURL = window.URL.createObjectURL(blob);
         let audio = new Audio(blobURL);
+        if (selectedSpeakerId) {
+          setAudioTagSpeaker(audio, selectedSpeakerId, 'Auto Play Test Audio');
+        }
 
         audio.addEventListener('canplaythrough', () => {
           audio.play()
@@ -686,7 +872,14 @@
       });
 
       refreshButton.addEventListener('click', getMicrophoneList);
+      document.getElementById('refreshSpeakerList').addEventListener('click', getSpeakerList);
+      document.getElementById('applySpeakerToAllButton').addEventListener('click', applySpeakerToAllAudioTags);
+      document.getElementById('speakerSelect').addEventListener('change', async (e) => {
+        selectedSpeakerId = e.target.value;
+        await applySpeakerToAllAudioTags();
+      });
       getMicrophoneList();
+      getSpeakerList();
     }
 
     async function startRecording() {
