@@ -20,7 +20,7 @@ let fileAudioSource = null;
 let destinationNode = null;
 
 // 测试音频文件路径（可以根据实际情况修改）
-const TEST_AUDIO_FILE = 'P501_C_english_f2_SWB_48k.wav';
+const TEST_AUDIO_FILE = '../P501_C_english_f2_SWB_48k.wav';
 
 // 工具函数：添加日志
 function log(message) {
