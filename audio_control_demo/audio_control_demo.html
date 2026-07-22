@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Control Demo</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .control-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .button-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 14px;
+            cursor: pointer;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .status {
+            padding: 10px;
+            background: #f0f0f0;
+            border-radius: 4px;
+            min-height: 50px;
+        }
+        select {
+            padding: 8px;
+            font-size: 14px;
+            min-width: 250px;
+        }
+        #audioContainer {
+            margin-top: 20px;
+            padding: 10px;
+            background: #e9ecef;
+            border-radius: 4px;
+        }
+        .log {
+            margin-top: 20px;
+            padding: 10px;
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .log-entry {
+            padding: 2px 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+    </style>
+</head>
+<body>
+    <h1>Audio Control Demo</h1>
+
+    <div class="control-panel">
+        <div class="button-row">
+            <button id="createAudioBtn">1. 创建 Audio Tag</button>
+            <button id="setStreamBtn" disabled>2. 设置 Stream (File → Stream)</button>
+            <button id="captureMicBtn">3. 采集 Mic</button>
+        </div>
+
+        <div class="button-row">
+            <button id="refreshSpeakerBtn">4. 刷新 Speaker</button>
+            <select id="speakerSelect" disabled>
+                <option>请先刷新Speaker列表</option>
+            </select>
+        </div>
+
+        <div class="button-row">
+            <button id="stopMicBtn" disabled>6. 停止 Mic</button>
+        </div>
+    </div>
+
+    <div class="status" id="status">
+        <strong>状态：</strong>等待操作...
+    </div>
+
+    <div id="audioContainer">
+        <strong>Audio元素容器：</strong>
+        <div id="audioPlaceholder">暂无Audio元素</div>
+    </div>
+
+    <div class="log" id="logContainer">
+        <strong>操作日志：</strong>
+    </div>
+
+    <script src="audio_control_demo.js"></script>
+</body>
+</html>
