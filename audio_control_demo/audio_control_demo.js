@@ -132,7 +132,7 @@ setStreamBtn.addEventListener('click', async () => {
 
     // 连接音频图
     fileAudioSource.connect(destinationNode);
-    fileAudioSource.connect(audioContext.destination); // 同时连接到扬声器以便监听
+    // fileAudioSource.connect(audioContext.destination); // 同时连接到扬声器以便监听
 
     // 启动音频源
     fileAudioSource.start(0);
