@@ -34,7 +34,35 @@ class AudioEncoderValidator {
       return false;
     }
     console.log('✓ AudioEncoder is supported');
+
+    // 检查Chrome版本对frameDuration的支持
+    const chromeVersion = AudioEncoderValidator.getChromeVersion();
+    if (chromeVersion > 0 && chromeVersion < 110) {
+      console.warn(`⚠️  Chrome ${chromeVersion} 检测到:`);
+      console.warn('   Opus frameDuration 参数可能不生效!');
+      console.warn('   - 编码器可能使用默认的 60ms 帧时长');
+      console.warn('   - 建议升级到 Chrome 110+ 以获得完整支持');
+      console.warn('');
+    }
+
     return true;
+  }
+
+  /**
+   * 获取Chrome版本号
+   */
+  static getChromeVersion() {
+    const match = navigator.userAgent.match(/Chrome\/(\d+)/);
+    return match ? parseInt(match[1]) : 0;
+  }
+
+  /**
+   * 检查frameDuration是否可能被支持
+   */
+  static isFrameDurationSupported() {
+    const chromeVersion = AudioEncoderValidator.getChromeVersion();
+    // Chrome 110+ 才完整支持 frameDuration
+    return chromeVersion === 0 || chromeVersion >= 110;
   }
 
   /**
@@ -42,6 +70,16 @@ class AudioEncoderValidator {
    */
   async checkConfig() {
     const encoderConfig = this.getEncoderConfig();
+
+    // 特别提示:旧版Chrome中frameDuration可能被忽略
+    if (this.config.codec === 'opus' &&
+        this.config.frameDuration !== 20000 &&
+        !AudioEncoderValidator.isFrameDurationSupported()) {
+      console.warn('⚠️  注意:当前浏览器版本可能不支持自定义 frameDuration');
+      console.warn(`   期望: ${this.config.frameDuration/1000}ms`);
+      console.warn(`   实际: 可能为 60ms (浏览器默认值)`);
+      console.warn('');
+    }
 
     try {
       const support = await AudioEncoder.isConfigSupported(encoderConfig);
@@ -284,7 +322,12 @@ class AudioEncoderValidator {
 
       validation: {
         passed: Math.abs(avgDuration - this.config.frameDuration / 1000) < 1,
-        deviation: avgDuration - this.config.frameDuration / 1000
+        deviation: avgDuration - this.config.frameDuration / 1000,
+        browserSupport: AudioEncoderValidator.isFrameDurationSupported(),
+        possibleCause: !AudioEncoderValidator.isFrameDurationSupported() &&
+                       Math.abs(avgDuration - 60) < 1
+                       ? 'Chrome 早期版本不支持自定义 frameDuration,使用默认 60ms'
+                       : null
       }
     };
 
@@ -340,6 +383,16 @@ class AudioEncoderValidator {
     console.log('\n✓ Validation:');
     console.log(`  Status: ${r.validation.passed ? '✓ PASSED' : '✗ FAILED'}`);
     console.log(`  Deviation: ${r.validation.deviation.toFixed(3)} ms`);
+    console.log(`  Browser Support: ${r.validation.browserSupport ? '✓ Supported' : '⚠️  Limited (Chrome < 110)'}`);
+
+    if (r.validation.possibleCause) {
+      console.log(`\n⚠️  可能的原因:`);
+      console.log(`  ${r.validation.possibleCause}`);
+      console.log(`  解决方案:`);
+      console.log(`    1. 升级到 Chrome 110+ (推荐)`);
+      console.log(`    2. 接受 60ms 作为默认帧时长`);
+      console.log(`    3. 在应用层做兼容处理`);
+    }
 
     console.log('\n⚙️  Configuration:');
     console.log(JSON.stringify(r.config, null, 2));
