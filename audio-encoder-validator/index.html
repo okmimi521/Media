@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AudioEncoder Frame Length Validator</title>
+  <style>
+    body {
+      font-family: 'Courier New', monospace;
+      max-width: 1200px;
+      margin: 20px auto;
+      padding: 20px;
+      background: #1e1e1e;
+      color: #d4d4d4;
+    }
+
+    h1 {
+      color: #4ec9b0;
+      border-bottom: 2px solid #4ec9b0;
+      padding-bottom: 10px;
+    }
+
+    .container {
+      background: #252526;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+
+    .config-section {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+
+    .config-item {
+      display: flex;
+      flex-direction: column;
+    }
+
+    label {
+      color: #9cdcfe;
+      margin-bottom: 5px;
+      font-size: 14px;
+    }
+
+    input, select {
+      padding: 8px;
+      background: #3c3c3c;
+      border: 1px solid #555;
+      color: #d4d4d4;
+      border-radius: 4px;
+      font-family: inherit;
+    }
+
+    button {
+      padding: 12px 24px;
+      background: #0e639c;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: bold;
+      transition: background 0.3s;
+    }
+
+    button:hover {
+      background: #1177bb;
+    }
+
+    button:disabled {
+      background: #555;
+      cursor: not-allowed;
+    }
+
+    .results {
+      background: #1e1e1e;
+      padding: 15px;
+      border-radius: 4px;
+      border-left: 4px solid #4ec9b0;
+      margin-top: 20px;
+    }
+
+    .result-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid #333;
+    }
+
+    .result-label {
+      color: #9cdcfe;
+    }
+
+    .result-value {
+      color: #ce9178;
+      font-weight: bold;
+    }
+
+    .chunks-table {
+      width: 100%;
+      margin-top: 20px;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    .chunks-table th {
+      background: #0e639c;
+      padding: 10px;
+      text-align: left;
+      border: 1px solid #555;
+    }
+
+    .chunks-table td {
+      padding: 8px;
+      border: 1px solid #555;
+    }
+
+    .chunks-table tr:nth-child(even) {
+      background: #2d2d30;
+    }
+
+    .status {
+      padding: 10px;
+      border-radius: 4px;
+      margin-bottom: 15px;
+      font-weight: bold;
+    }
+
+    .status.info {
+      background: #1a3a52;
+      color: #9cdcfe;
+    }
+
+    .status.success {
+      background: #1e3a1e;
+      color: #4ec9b0;
+    }
+
+    .status.error {
+      background: #4a1e1e;
+      color: #f48771;
+    }
+
+    .status.warning {
+      background: #4a3c1e;
+      color: #dcdcaa;
+    }
+
+    .chart {
+      margin-top: 20px;
+      height: 200px;
+      background: #1e1e1e;
+      border-radius: 4px;
+      padding: 15px;
+      position: relative;
+    }
+
+    pre {
+      background: #1e1e1e;
+      padding: 15px;
+      border-radius: 4px;
+      overflow-x: auto;
+      color: #ce9178;
+    }
+  </style>
+</head>
+<body>
+  <h1>🎵 AudioEncoder Frame Length Validator</h1>
+
+  <div class="container">
+    <h2>编码器配置</h2>
+    <div class="config-section">
+      <div class="config-item">
+        <label for="codec">Codec 编解码器</label>
+        <select id="codec">
+          <option value="opus" selected>Opus</option>
+          <option value="mp4a.40.2">AAC-LC (mp4a.40.2)</option>
+          <option value="flac">FLAC</option>
+          <option value="pcm-s16">PCM S16</option>
+        </select>
+      </div>
+
+      <div class="config-item">
+        <label for="sampleRate">Sample Rate 采样率 (Hz)</label>
+        <select id="sampleRate">
+          <option value="8000">8000</option>
+          <option value="16000">16000</option>
+          <option value="24000">24000</option>
+          <option value="48000" selected>48000</option>
+        </select>
+      </div>
+
+      <div class="config-item">
+        <label for="channels">Channels 声道数</label>
+        <select id="channels">
+          <option value="1">1 (Mono)</option>
+          <option value="2" selected>2 (Stereo)</option>
+        </select>
+      </div>
+
+      <div class="config-item">
+        <label for="bitrate">Bitrate 比特率 (bps)</label>
+        <input type="number" id="bitrate" value="128000" step="1000">
+      </div>
+
+      <div class="config-item">
+        <label for="frameDuration">Frame Duration 帧时长 (ms) - Opus Only</label>
+        <select id="frameDuration">
+          <option value="2500">2.5 ms</option>
+          <option value="5000">5 ms</option>
+          <option value="10000">10 ms</option>
+          <option value="20000" selected>20 ms</option>
+          <option value="40000">40 ms</option>
+          <option value="60000">60 ms</option>
+          <option value="120000">120 ms</option>
+        </select>
+      </div>
+
+      <div class="config-item">
+        <label for="testDuration">Test Duration 测试时长 (秒)</label>
+        <input type="number" id="testDuration" value="2" min="1" max="10">
+      </div>
+    </div>
+
+    <button id="startTest" onclick="runTest()">▶ 开始测试</button>
+    <button id="stopTest" onclick="stopTest()" disabled style="margin-left: 10px;">⏹ 停止测试</button>
+  </div>
+
+  <div id="statusContainer"></div>
+  <div id="resultsContainer"></div>
+  <div id="chunksContainer"></div>
+
+  <script>
+    let encoder = null;
+    let testRunning = false;
+    let chunks = [];
+    let startTime = 0;
+    let frameCount = 0;
+
+    // 检查浏览器支持
+    window.addEventListener('DOMContentLoaded', () => {
+      if (typeof AudioEncoder === 'undefined') {
+        showStatus('error', '❌ 浏览器不支持 AudioEncoder API！需要 Chrome 94+ 或 Edge 94+');
+        document.getElementById('startTest').disabled = true;
+      } else {
+        showStatus('success', '✓ 浏览器支持 AudioEncoder API');
+      }
+    });
+
+    async function runTest() {
+      if (testRunning) return;
+
+      testRunning = true;
+      chunks = [];
+      frameCount = 0;
+
+      document.getElementById('startTest').disabled = true;
+      document.getElementById('stopTest').disabled = false;
+      document.getElementById('resultsContainer').innerHTML = '';
+      document.getElementById('chunksContainer').innerHTML = '';
+
+      showStatus('info', '⏳ 正在初始化编码器...');
+
+      try {
+        // 获取配置
+        const config = getConfig();
+
+        // 检查配置支持
+        showStatus('info', '⏳ 检查编解码器配置支持...');
+        const support = await AudioEncoder.isConfigSupported(config);
+
+        if (!support.supported) {
+          throw new Error('配置不支持: ' + JSON.stringify(config));
+        }
+
+        showStatus('success', '✓ 配置支持检查通过');
+        showStatus('info', '⏳ 创建编码器并开始编码...');
+
+        // 创建编码器
+        encoder = new AudioEncoder({
+          output: handleEncodedChunk,
+          error: handleError
+        });
+
+        encoder.configure(config);
+
+        // 开始编码
+        startTime = performance.now();
+        await encodeTestAudio(config);
+
+      } catch (error) {
+        showStatus('error', '❌ 错误: ' + error.message);
+        console.error(error);
+        stopTest();
+      }
+    }
+
+    function getConfig() {
+      const codec = document.getElementById('codec').value;
+      const sampleRate = parseInt(document.getElementById('sampleRate').value);
+      const numberOfChannels = parseInt(document.getElementById('channels').value);
+      const bitrate = parseInt(document.getElementById('bitrate').value);
+      const frameDuration = parseInt(document.getElementById('frameDuration').value); // 微秒
+
+      const config = {
+        codec: codec,
+        sampleRate: sampleRate,
+        numberOfChannels: numberOfChannels,
+        bitrate: bitrate
+      };
+
+      // Opus特定配置
+      if (codec === 'opus') {
+        config.opus = {
+          frameDuration: frameDuration,  // 单位：微秒 (2500-120000)
+          complexity: 10,
+          useinbandfec: true
+        };
+      }
+
+      return config;
+    }
+
+    async function encodeTestAudio(config) {
+      const testDuration = parseInt(document.getElementById('testDuration').value);
+      const sampleRate = config.sampleRate;
+      const numberOfChannels = config.numberOfChannels;
+
+      // 每次编码的帧数 (100ms)
+      const framesPerChunk = Math.floor(sampleRate * 0.1); // 100ms
+      const totalChunks = Math.ceil(testDuration * 10); // 100ms per chunk
+
+      for (let i = 0; i < totalChunks && testRunning; i++) {
+        // 生成测试音频数据 (440Hz 正弦波)
+        const data = generateSineWave(
+          440,
+          sampleRate,
+          framesPerChunk,
+          numberOfChannels,
+          i * framesPerChunk
+        );
+
+        const audioData = new AudioData({
+          format: 'f32-planar',
+          sampleRate: sampleRate,
+          numberOfFrames: framesPerChunk,
+          numberOfChannels: numberOfChannels,
+          timestamp: (i * framesPerChunk * 1000000) / sampleRate, // 微秒
+          data: data
+        });
+
+        encoder.encode(audioData);
+        audioData.close();
+
+        // 等待一小段时间避免阻塞
+        await new Promise(resolve => setTimeout(resolve, 10));
+      }
+
+      // 完成编码
+      showStatus('info', '⏳ 等待编码器完成...');
+      await encoder.flush();
+
+      // 显示结果
+      displayResults();
+
+      stopTest();
+    }
+
+    function generateSineWave(frequency, sampleRate, frames, channels, offset) {
+      const data = new Float32Array(frames * channels);
+
+      for (let i = 0; i < frames; i++) {
+        const sample = Math.sin(2 * Math.PI * frequency * (i + offset) / sampleRate);
+
+        for (let ch = 0; ch < channels; ch++) {
+          data[i * channels + ch] = sample * 0.5; // 降低音量
+        }
+      }
+
+      return data;
+    }
+
+    function handleEncodedChunk(chunk, metadata) {
+      frameCount++;
+
+      const chunkInfo = {
+        index: frameCount,
+        type: chunk.type,
+        timestamp: chunk.timestamp,
+        duration: chunk.duration,
+        byteLength: chunk.byteLength,
+        receivedTime: performance.now()
+      };
+
+      chunks.push(chunkInfo);
+
+      // 实时更新状态
+      const elapsed = (chunkInfo.receivedTime - startTime) / 1000;
+      showStatus('info',
+        `⏳ 编码中... 已编码 ${frameCount} 帧，` +
+        `耗时 ${elapsed.toFixed(2)}s，` +
+        `最新帧: ${chunkInfo.byteLength} bytes`
+      );
+
+      if (metadata && metadata.decoderConfig) {
+        console.log('Decoder config:', metadata.decoderConfig);
+      }
+    }
+
+    function handleError(error) {
+      showStatus('error', '❌ 编码错误: ' + error.message);
+      console.error('Encoding error:', error);
+      stopTest();
+    }
+
+    function stopTest() {
+      testRunning = false;
+
+      if (encoder) {
+        encoder.close();
+        encoder = null;
+      }
+
+      document.getElementById('startTest').disabled = false;
+      document.getElementById('stopTest').disabled = true;
+    }
+
+    function displayResults() {
+      if (chunks.length === 0) {
+        showStatus('warning', '⚠ 没有编码数据');
+        return;
+      }
+
+      // 计算统计信息
+      const totalBytes = chunks.reduce((sum, c) => sum + c.byteLength, 0);
+      const avgByteLength = totalBytes / chunks.length;
+      const minByteLength = Math.min(...chunks.map(c => c.byteLength));
+      const maxByteLength = Math.max(...chunks.map(c => c.byteLength));
+
+      // 计算时间戳差值 (帧时长)
+      const durations = [];
+      for (let i = 1; i < chunks.length; i++) {
+        const timeDiff = (chunks[i].timestamp - chunks[i-1].timestamp) / 1000; // 转换为ms
+        durations.push(timeDiff);
+      }
+
+      const avgDuration = durations.length > 0
+        ? durations.reduce((a, b) => a + b, 0) / durations.length
+        : 0;
+      const minDuration = durations.length > 0 ? Math.min(...durations) : 0;
+      const maxDuration = durations.length > 0 ? Math.max(...durations) : 0;
+
+      // 计算实际比特率
+      const totalDurationMs = chunks[chunks.length - 1].timestamp / 1000;
+      const actualBitrate = (totalBytes * 8) / (totalDurationMs / 1000);
+
+      // 计算chunk duration (如果有)
+      const chunkDurations = chunks
+        .filter(c => c.duration !== undefined && c.duration !== null)
+        .map(c => c.duration / 1000); // 转换为ms
+
+      const avgChunkDuration = chunkDurations.length > 0
+        ? chunkDurations.reduce((a, b) => a + b, 0) / chunkDurations.length
+        : 0;
+
+      // 显示结果
+      const config = getConfig();
+      const expectedFrameDuration = config.opus ? config.opus.frameDuration / 1000 : 20; // 转换为ms
+
+      const html = `
+        <div class="container">
+          <h2>📊 编码结果统计</h2>
+
+          <div class="results">
+            <div class="result-item">
+              <span class="result-label">总帧数</span>
+              <span class="result-value">${chunks.length} 帧</span>
+            </div>
+            <div class="result-item">
+              <span class="result-label">总数据量</span>
+              <span class="result-value">${(totalBytes / 1024).toFixed(2)} KB (${totalBytes} bytes)</span>
+            </div>
+            <div class="result-item">
+              <span class="result-label">总时长</span>
+              <span class="result-value">${(totalDurationMs / 1000).toFixed(3)} 秒</span>
+            </div>
+
+            <h3 style="color: #4ec9b0; margin-top: 20px;">帧大小统计 (Byte Length)</h3>
+            <div class="result-item">
+              <span class="result-label">平均帧大小</span>
+              <span class="result-value">${avgByteLength.toFixed(2)} bytes</span>
+            </div>
+            <div class="result-item">
+              <span class="result-label">最小帧大小</span>
+              <span class="result-value">${minByteLength} bytes</span>
+            </div>
+            <div class="result-item">
+              <span class="result-label">最大帧大小</span>
+              <span class="result-value">${maxByteLength} bytes</span>
+            </div>
+
+            <h3 style="color: #4ec9b0; margin-top: 20px;">帧时长统计 (基于timestamp差值)</h3>
+            <div class="result-item">
+              <span class="result-label">预期帧时长</span>
+              <span class="result-value">${expectedFrameDuration} ms</span>
+            </div>
+            <div class="result-item">
+              <span class="result-label">实际平均帧时长</span>
+              <span class="result-value" style="color: ${Math.abs(avgDuration - expectedFrameDuration) < 1 ? '#4ec9b0' : '#dcdcaa'}">
+                ${avgDuration.toFixed(3)} ms
+                ${Math.abs(avgDuration - expectedFrameDuration) < 1 ? '✓' : '⚠'}
+              </span>
+            </div>
+            <div class="result-item">
+              <span class="result-label">最小帧时长</span>
+              <span class="result-value">${minDuration.toFixed(3)} ms</span>
+            </div>
+            <div class="result-item">
+              <span class="result-label">最大帧时长</span>
+              <span class="result-value">${maxDuration.toFixed(3)} ms</span>
+            </div>
+
+            ${avgChunkDuration > 0 ? `
+            <h3 style="color: #4ec9b0; margin-top: 20px;">帧时长统计 (chunk.duration)</h3>
+            <div class="result-item">
+              <span class="result-label">平均 chunk.duration</span>
+              <span class="result-value">${avgChunkDuration.toFixed(3)} ms</span>
+            </div>
+            ` : ''}
+
+            <h3 style="color: #4ec9b0; margin-top: 20px;">比特率</h3>
+            <div class="result-item">
+              <span class="result-label">配置比特率</span>
+              <span class="result-value">${(config.bitrate / 1000).toFixed(0)} kbps</span>
+            </div>
+            <div class="result-item">
+              <span class="result-label">实际比特率</span>
+              <span class="result-value">${(actualBitrate / 1000).toFixed(2)} kbps</span>
+            </div>
+          </div>
+
+          <h3 style="margin-top: 20px;">配置信息</h3>
+          <pre>${JSON.stringify(config, null, 2)}</pre>
+        </div>
+      `;
+
+      document.getElementById('resultsContainer').innerHTML = html;
+
+      // 显示所有chunk的详细信息
+      displayChunksTable();
+
+      // 最终状态
+      const isValid = Math.abs(avgDuration - expectedFrameDuration) < 1;
+      showStatus(
+        isValid ? 'success' : 'warning',
+        isValid
+          ? `✓ 测试完成！帧时长验证通过 (${avgDuration.toFixed(3)}ms ≈ ${expectedFrameDuration}ms)`
+          : `⚠ 测试完成！帧时长与预期有偏差 (${avgDuration.toFixed(3)}ms vs ${expectedFrameDuration}ms)`
+      );
+    }
+
+    function displayChunksTable() {
+      const maxDisplay = 50; // 最多显示50帧
+      const displayChunks = chunks.slice(0, maxDisplay);
+
+      let html = `
+        <div class="container">
+          <h2>📋 编码帧详情 ${chunks.length > maxDisplay ? `(显示前 ${maxDisplay} 帧，共 ${chunks.length} 帧)` : ''}</h2>
+          <table class="chunks-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Type</th>
+                <th>Timestamp (ms)</th>
+                <th>Duration (ms)</th>
+                <th>Time Diff (ms)</th>
+                <th>Byte Length</th>
+              </tr>
+            </thead>
+            <tbody>
+      `;
+
+      for (let i = 0; i < displayChunks.length; i++) {
+        const chunk = displayChunks[i];
+        const timeDiff = i > 0
+          ? ((chunk.timestamp - displayChunks[i-1].timestamp) / 1000).toFixed(3)
+          : '-';
+
+        html += `
+          <tr>
+            <td>${chunk.index}</td>
+            <td>${chunk.type}</td>
+            <td>${(chunk.timestamp / 1000).toFixed(3)}</td>
+            <td>${chunk.duration ? (chunk.duration / 1000).toFixed(3) : '-'}</td>
+            <td>${timeDiff}</td>
+            <td>${chunk.byteLength}</td>
+          </tr>
+        `;
+      }
+
+      html += `
+            </tbody>
+          </table>
+        </div>
+      `;
+
+      document.getElementById('chunksContainer').innerHTML = html;
+    }
+
+    function showStatus(type, message) {
+      const container = document.getElementById('statusContainer');
+      container.innerHTML = `<div class="status ${type}">${message}</div>`;
+    }
+  </script>
+</body>
+</html>
