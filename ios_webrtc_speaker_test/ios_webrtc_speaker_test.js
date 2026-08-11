@@ -8,6 +8,8 @@ const AUDIO_FILE_2 = '../test2.mp3';
 const sendSingleBtn = document.getElementById('sendSingleBtn');
 const sendDualBtn = document.getElementById('sendDualBtn');
 const getMicBtn = document.getElementById('getMicBtn');
+const refreshMicBtn = document.getElementById('refreshMicBtn');
+const micSelect = document.getElementById('micSelect');
 const micStatus = document.getElementById('micStatus');
 const refreshSpeakerBtn = document.getElementById('refreshSpeakerBtn');
 const speakerSelect = document.getElementById('speakerSelect');
@@ -28,8 +30,10 @@ let localPeer = null;  // Sender
 let remotePeer = null; // Receiver
 let audioContext = null;
 let audioElement = null;
-let micStream = null; // Microphone stream (for device enumeration only)
+let micStream = null; // Microphone stream (for device switching/enumeration only)
+let microphones = [];
 let speakers = [];
+let selectedMicId = '';
 let currentStreamType = null;
 let deviceChangeTimer = null;
 let audioReplayTimer = null;
@@ -116,6 +120,37 @@ async function refreshSpeakerList(reason = 'manual refresh') {
   }
 }
 
+async function refreshMicList(reason = 'manual refresh') {
+  try {
+    log(`Enumerating microphone devices (${reason})...`, 'receiver');
+
+    const previousMicId = micSelect.value;
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    microphones = devices.filter(d => d.kind === 'audioinput');
+
+    log(`Found ${microphones.length} microphone(s)`, 'receiver');
+
+    micSelect.innerHTML = '';
+    micSelect.add(new Option('Default microphone', ''));
+
+    microphones.forEach((device, i) => {
+      const label = device.label || `Microphone ${i + 1}`;
+      micSelect.add(new Option(label, device.deviceId));
+      log(`  Mic ${i + 1}: ${label}, deviceId=${device.deviceId || '(empty deviceId)'}`, 'receiver');
+    });
+
+    if (previousMicId && microphones.some(device => device.deviceId === previousMicId)) {
+      micSelect.value = previousMicId;
+    } else if (selectedMicId && microphones.some(device => device.deviceId === selectedMicId)) {
+      micSelect.value = selectedMicId;
+    }
+
+    micSelect.disabled = false;
+  } catch (err) {
+    log(`Error refreshing microphones: ${err.name || 'Error'} - ${err.message}`, 'error');
+  }
+}
+
 function initDeviceChangeMonitoring() {
   if (!navigator.mediaDevices) {
     log('navigator.mediaDevices is not available, cannot monitor devicechange', 'warning');
@@ -128,6 +163,7 @@ function initDeviceChangeMonitoring() {
     clearTimeout(deviceChangeTimer);
     deviceChangeTimer = setTimeout(() => {
       refreshSpeakerList('devicechange event');
+      refreshMicList('devicechange event');
     }, 300);
   };
 
@@ -526,34 +562,88 @@ async function negotiate() {
   log('✓ WebRTC negotiation complete', 'success');
 }
 
-// Get microphone permission (for device enumeration only, won't play)
-getMicBtn.addEventListener('click', async () => {
+function stopMicStream(reason) {
+  if (!micStream) return;
+
+  micStream.getTracks().forEach(track => {
+    log(`Stopping old mic track (${reason}): ${track.label || track.id}, state=${track.readyState}`, 'receiver');
+    track.stop();
+  });
+  micStream = null;
+}
+
+function attachMicTrackEventHandlers(track) {
+  track.onmute = () => {
+    log(`Mic track muted: ${track.label || track.id}`, 'warning');
+  };
+
+  track.onunmute = () => {
+    log(`Mic track unmuted: ${track.label || track.id}`, 'receiver');
+  };
+
+  track.onended = () => {
+    log(`Mic track ended: ${track.label || track.id}`, 'warning');
+  };
+}
+
+async function switchMicrophone(reason = 'manual switch') {
   try {
-    log('🎤 Requesting microphone permission...', 'receiver');
+    selectedMicId = micSelect.value || '';
+    const selectedMicLabel = micSelect.options[micSelect.selectedIndex]?.text || 'Default microphone';
+
+    log(`🎤 Switching microphone (${reason}) to: ${selectedMicLabel}`, 'receiver');
+    log(`  Mic deviceId: ${selectedMicId || '(default)'}`, 'receiver');
     micStatus.textContent = 'Requesting...';
     micStatus.style.color = '#856404';
 
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    stopMicStream('before mic switch');
+
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: selectedMicId ? { deviceId: { exact: selectedMicId } } : true
+    });
 
     // Store stream but don't play it
     micStream = stream;
     const tracks = stream.getAudioTracks();
 
-    log(`✓ Microphone permission granted`, 'success');
+    log(`✓ Microphone captured`, 'success');
     tracks.forEach((track, i) => {
-      log(`  Mic ${i + 1}: ${track.label} (${track.readyState})`, 'receiver');
+      const settings = typeof track.getSettings === 'function' ? track.getSettings() : {};
+      attachMicTrackEventHandlers(track);
+      log(`  Mic track ${i + 1}: label=${track.label}, id=${track.id}, state=${track.readyState}`, 'receiver');
+      log(`  Mic settings ${i + 1}: deviceId=${settings.deviceId || '(n/a)'}, sampleRate=${settings.sampleRate || '(n/a)'}, channelCount=${settings.channelCount || '(n/a)'}`, 'receiver');
     });
 
-    micStatus.textContent = `✓ ${tracks[0].label}`;
+    micStatus.textContent = `✓ ${tracks[0]?.label || selectedMicLabel}`;
     micStatus.style.color = '#28a745';
-    getMicBtn.disabled = true;
 
-    log('ℹ️ Microphone captured but not playing (for device enumeration only)', 'receiver');
+    await refreshMicList('after microphone capture');
+
+    log('ℹ️ Microphone captured for device switching test only; audio is not played', 'receiver');
 
   } catch (err) {
-    log(`✗ Microphone permission denied: ${err.name} - ${err.message}`, 'error');
+    log(`✗ Microphone switch/capture failed: ${err.name} - ${err.message}`, 'error');
     micStatus.textContent = `✗ ${err.name}`;
     micStatus.style.color = '#dc3545';
+  }
+}
+
+// Get/switch microphone permission (for device enumeration only, won't play)
+getMicBtn.addEventListener('click', () => {
+  switchMicrophone('button click');
+});
+
+refreshMicBtn.addEventListener('click', () => {
+  refreshMicList('manual refresh');
+});
+
+micSelect.addEventListener('change', () => {
+  selectedMicId = micSelect.value || '';
+  const label = micSelect.options[micSelect.selectedIndex]?.text || 'Default microphone';
+  log(`Selected microphone: ${label}`, 'receiver');
+
+  if (micStream) {
+    switchMicrophone('select change');
   }
 });
 
@@ -716,6 +806,7 @@ log('WebRTC test page loaded', 'success');
 log('This test uses a local peer connection loop to simulate remote WebRTC streams', 'info');
 receiverStatusText.innerHTML = '<strong>Status:</strong> Ready. Click a "Send" button to start.';
 refreshSpeakerList('initial load');
+refreshMicList('initial load');
 
 // Cleanup
 window.addEventListener('beforeunload', () => {
