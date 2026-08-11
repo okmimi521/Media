@@ -32,6 +32,8 @@ let micStream = null; // Microphone stream (for device enumeration only)
 let speakers = [];
 let currentStreamType = null;
 let deviceChangeTimer = null;
+let audioReplayTimer = null;
+let isCleaningUp = false;
 
 // Test results
 const testResultsData = {
@@ -143,6 +145,88 @@ function initDeviceChangeMonitoring() {
   log('devicechange is not supported by navigator.mediaDevices', 'warning');
 }
 
+function describeAudioError(audio) {
+  if (!audio.error) return 'unknown error';
+
+  const errorNames = {
+    1: 'MEDIA_ERR_ABORTED',
+    2: 'MEDIA_ERR_NETWORK',
+    3: 'MEDIA_ERR_DECODE',
+    4: 'MEDIA_ERR_SRC_NOT_SUPPORTED'
+  };
+
+  return `${errorNames[audio.error.code] || 'MEDIA_ERR_UNKNOWN'} (${audio.error.code}): ${audio.error.message || 'no message'}`;
+}
+
+function scheduleAudioReplay(reason) {
+  if (!audioElement || isCleaningUp) return;
+
+  clearTimeout(audioReplayTimer);
+  log(`Audio tag ${reason}; retry play() after 100ms`, 'warning');
+
+  audioReplayTimer = setTimeout(async () => {
+    if (!audioElement || isCleaningUp || !audioElement.srcObject) return;
+
+    try {
+      await audioElement.play();
+      log(`✓ audioElement.play() retry succeeded (${reason})`, 'success');
+    } catch (err) {
+      log(`✗ audioElement.play() retry failed (${reason}): ${err.name} - ${err.message}`, 'error');
+    }
+  }, 100);
+}
+
+function attachAudioElementEventHandlers(audio) {
+  if (audio.dataset.eventHandlersAttached === 'true') return;
+  audio.dataset.eventHandlersAttached = 'true';
+
+  audio.addEventListener('loadstart', () => {
+    log('Audio tag event: loadstart', 'receiver');
+  });
+
+  audio.addEventListener('loadedmetadata', () => {
+    log(`Audio tag event: loadedmetadata, duration=${audio.duration}`, 'receiver');
+  });
+
+  audio.addEventListener('canplay', () => {
+    log('Audio tag event: canplay', 'receiver');
+  });
+
+  audio.addEventListener('play', () => {
+    log('Audio tag event: play', 'receiver');
+  });
+
+  audio.addEventListener('playing', () => {
+    clearTimeout(audioReplayTimer);
+    log('Audio tag event: playing', 'success');
+  });
+
+  audio.addEventListener('pause', () => {
+    log(`Audio tag event: pause, paused=${audio.paused}, currentTime=${audio.currentTime}`, 'warning');
+    scheduleAudioReplay('paused');
+  });
+
+  audio.addEventListener('waiting', () => {
+    log('Audio tag event: waiting', 'warning');
+  });
+
+  audio.addEventListener('stalled', () => {
+    log('Audio tag event: stalled', 'warning');
+  });
+
+  audio.addEventListener('ended', () => {
+    log('Audio tag event: ended', 'warning');
+    scheduleAudioReplay('ended');
+  });
+
+  audio.addEventListener('error', () => {
+    log(`Audio tag event: error, ${describeAudioError(audio)}`, 'error');
+    scheduleAudioReplay('error');
+  });
+
+  log('✓ Audio tag event handlers attached', 'success');
+}
+
 // Create peer connections
 function createPeerConnections() {
   log('Creating WebRTC peer connections...', 'sender');
@@ -212,6 +296,7 @@ function handleRemoteStream(remoteStream) {
     audioElement.autoplay = true;
     audioElement.loop = true;
     document.documentElement.appendChild(audioElement);
+    attachAudioElementEventHandlers(audioElement);
   }
 
   // Assign remote stream
@@ -591,7 +676,9 @@ refreshSpeakerList('initial load');
 
 // Cleanup
 window.addEventListener('beforeunload', () => {
+  isCleaningUp = true;
   clearTimeout(deviceChangeTimer);
+  clearTimeout(audioReplayTimer);
   if (localPeer) localPeer.close();
   if (remotePeer) remotePeer.close();
   if (audioContext) audioContext.close();
