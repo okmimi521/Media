@@ -31,6 +31,7 @@ let audioElement = null;
 let micStream = null; // Microphone stream (for device enumeration only)
 let speakers = [];
 let currentStreamType = null;
+let deviceChangeTimer = null;
 
 // Test results
 const testResultsData = {
@@ -66,6 +67,80 @@ function log(message, type = 'info') {
   logContainer.appendChild(entry);
   logContainer.scrollTop = logContainer.scrollHeight;
   console.log(`[${type}] ${message}`);
+}
+
+function formatDevice(device, index) {
+  const label = device.label || '(label hidden until permission granted)';
+  const deviceId = device.deviceId || '(empty deviceId)';
+  const groupId = device.groupId || '(empty groupId)';
+  return `${index + 1}. kind=${device.kind}, label=${label}, deviceId=${deviceId}, groupId=${groupId}`;
+}
+
+async function refreshSpeakerList(reason = 'manual refresh') {
+  try {
+    log(`Enumerating media devices (${reason})...`, 'receiver');
+
+    const previousSpeakerId = speakerSelect.value;
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    speakers = devices.filter(d => d.kind === 'audiooutput');
+
+    log(`Device list changed/check result: total=${devices.length}, speakers=${speakers.length}`, 'receiver');
+    devices.forEach((device, i) => {
+      log(`  ${formatDevice(device, i)}`, 'receiver');
+    });
+
+    speakerSelect.innerHTML = '';
+
+    if (speakers.length === 0) {
+      speakerSelect.add(new Option('No speakers found', ''));
+      speakerSelect.disabled = true;
+      return;
+    }
+
+    speakers.forEach((device, i) => {
+      const label = device.label || `Speaker ${i + 1}`;
+      speakerSelect.add(new Option(label, device.deviceId));
+      log(`  Speaker ${i + 1}: ${label}`, 'receiver');
+    });
+
+    const stillHasPreviousSpeaker = speakers.some(device => device.deviceId === previousSpeakerId);
+    if (stillHasPreviousSpeaker) {
+      speakerSelect.value = previousSpeakerId;
+    }
+    speakerSelect.disabled = false;
+  } catch (err) {
+    log(`Error refreshing speakers/devices: ${err.name || 'Error'} - ${err.message}`, 'error');
+  }
+}
+
+function initDeviceChangeMonitoring() {
+  if (!navigator.mediaDevices) {
+    log('navigator.mediaDevices is not available, cannot monitor devicechange', 'warning');
+    return;
+  }
+
+  const onDeviceChange = () => {
+    log('🔄 devicechange event fired', 'warning');
+
+    clearTimeout(deviceChangeTimer);
+    deviceChangeTimer = setTimeout(() => {
+      refreshSpeakerList('devicechange event');
+    }, 300);
+  };
+
+  if (typeof navigator.mediaDevices.addEventListener === 'function') {
+    navigator.mediaDevices.addEventListener('devicechange', onDeviceChange);
+    log('✓ devicechange monitoring enabled via addEventListener', 'success');
+    return;
+  }
+
+  if ('ondevicechange' in navigator.mediaDevices) {
+    navigator.mediaDevices.ondevicechange = onDeviceChange;
+    log('✓ devicechange monitoring enabled via ondevicechange', 'success');
+    return;
+  }
+
+  log('devicechange is not supported by navigator.mediaDevices', 'warning');
 }
 
 // Create peer connections
@@ -355,31 +430,8 @@ getMicBtn.addEventListener('click', async () => {
 });
 
 // Refresh speakers
-refreshSpeakerBtn.addEventListener('click', async () => {
-  try {
-    log('Enumerating audio output devices...', 'receiver');
-
-    const devices = await navigator.mediaDevices.enumerateDevices();
-    speakers = devices.filter(d => d.kind === 'audiooutput');
-
-    log(`Found ${speakers.length} speaker(s)`, 'receiver');
-
-    speakerSelect.innerHTML = '';
-
-    if (speakers.length === 0) {
-      speakerSelect.add(new Option('No speakers found', ''));
-    } else {
-      speakers.forEach((device, i) => {
-        const label = device.label || `Speaker ${i + 1}`;
-        speakerSelect.add(new Option(label, device.deviceId));
-        log(`  ${i + 1}. ${label}`, 'receiver');
-      });
-      speakerSelect.disabled = false;
-    }
-
-  } catch (err) {
-    log(`Error refreshing speakers: ${err.message}`, 'error');
-  }
+refreshSpeakerBtn.addEventListener('click', () => {
+  refreshSpeakerList('manual refresh');
 });
 
 // Speaker selection change
@@ -423,9 +475,10 @@ speakerSelect.addEventListener('change', async () => {
 
     speakerSwitchResult.innerHTML = `
       <div class="test-result pass">
-        ✓ Speaker switch SUCCESSFUL for ${currentStreamType.toUpperCase()} track WebRTC stream<br>
-        Switched to: ${deviceLabel}<br>
-        Time: ${duration}ms
+        ✓ setSinkId() Promise RESOLVED for ${currentStreamType.toUpperCase()} track<br>
+        Device: ${deviceLabel} (sinkId updated)<br>
+        Time: ${duration}ms<br>
+        <strong style="color: #856404;">⚠️ Put your ear near device to verify if audio ACTUALLY switched!</strong>
       </div>
     `;
 
@@ -441,9 +494,9 @@ speakerSelect.addEventListener('change', async () => {
 
     speakerSwitchResult.innerHTML = `
       <div class="test-result fail">
-        ✗ Speaker switch FAILED for ${currentStreamType.toUpperCase()} track WebRTC stream<br>
+        ✗ setSinkId() threw ERROR for ${currentStreamType.toUpperCase()} track<br>
         Error: ${err.name} - ${err.message}<br>
-        <strong>🐛 This confirms the iOS Safari bug!</strong>
+        <strong>This is an explicit failure (not the silent failure bug)</strong>
       </div>
     `;
 
@@ -454,6 +507,7 @@ speakerSelect.addEventListener('change', async () => {
 // Update test results summary
 function updateTestResults() {
   let html = '<h4>Test Summary (WebRTC Remote Streams):</h4>';
+  html += '<p style="font-size: 12px; color: #666; margin: 5px 0;">Note: "PASSED" means setSinkId() Promise resolved. You must physically verify if audio actually switched.</p>';
 
   // Single track result
   if (testResultsData.single.attempted) {
@@ -462,8 +516,9 @@ function updateTestResults() {
     const bg = testResultsData.single.success ? '#d4edda' : '#f8d7da';
     html += `
       <div style="background: ${bg}; color: ${color}; padding: 12px; margin: 10px 0; border-radius: 6px;">
-        ${icon} <strong>SINGLE Track (WebRTC):</strong> ${testResultsData.single.success ? 'PASSED ✓' : 'FAILED ✗'}
+        ${icon} <strong>SINGLE Track (WebRTC):</strong> ${testResultsData.single.success ? 'Promise Resolved ✓' : 'Promise Rejected ✗'}
         ${testResultsData.single.error ? `<br><small>Error: ${testResultsData.single.error}</small>` : ''}
+        ${testResultsData.single.success ? '<br><small style="color: #856404;">⚠️ Did audio ACTUALLY switch? (Silent failure bug)</small>' : ''}
       </div>
     `;
   } else {
@@ -479,8 +534,9 @@ function updateTestResults() {
     const bg = testResultsData.dual.success ? '#d4edda' : '#f8d7da';
     html += `
       <div style="background: ${bg}; color: ${color}; padding: 12px; margin: 10px 0; border-radius: 6px;">
-        ${icon} <strong>DUAL Track (WebRTC):</strong> ${testResultsData.dual.success ? 'PASSED ✓' : 'FAILED ✗'}
+        ${icon} <strong>DUAL Track (WebRTC):</strong> ${testResultsData.dual.success ? 'Promise Resolved ✓' : 'Promise Rejected ✗'}
         ${testResultsData.dual.error ? `<br><small>Error: ${testResultsData.dual.error}</small>` : ''}
+        ${testResultsData.dual.success ? '<br><small style="color: #28a745;">Usually works correctly on dual track</small>' : ''}
       </div>
     `;
   } else {
@@ -494,22 +550,28 @@ function updateTestResults() {
     if (!testResultsData.single.success && testResultsData.dual.success) {
       html += `
         <div style="background: #fff3cd; border: 3px solid #ffc107; padding: 20px; margin: 15px 0; border-radius: 8px;">
-          <h3 style="margin-top: 0; color: #856404;">🐛 BUG CONFIRMED!</h3>
+          <h3 style="margin-top: 0; color: #856404;">🐛 SILENT FAILURE BUG DETECTED!</h3>
           <p style="margin: 0;">
-            Single track WebRTC stream <strong>FAILS</strong> to switch speakers.<br>
-            Dual track WebRTC stream <strong>WORKS</strong> correctly.<br>
+            <strong>Single track:</strong> setSinkId() Promise resolved BUT audio didn't actually switch ❌<br>
+            <strong>Dual track:</strong> setSinkId() Promise resolved AND audio actually switched ✅<br>
             <br>
-            <strong>This confirms the iOS Safari WebRTC speaker switch bug.</strong>
+            <strong>This is the iOS Safari WebRTC silent failure bug:</strong><br>
+            No errors thrown, but single-track streams don't actually route to the selected device.<br>
+            <br>
+            <em>Verify by putting your ear near the device after switching.</em>
           </p>
         </div>
       `;
     } else if (testResultsData.single.success && testResultsData.dual.success) {
       html += `
         <div style="background: #d4edda; border: 3px solid #28a745; padding: 20px; margin: 15px 0; border-radius: 8px;">
-          <h3 style="margin-top: 0; color: #155724;">✓ Both Tests PASSED</h3>
+          <h3 style="margin-top: 0; color: #155724;">✓ Both Promises Resolved</h3>
           <p style="margin: 0;">
-            Both single and dual track streams work correctly.<br>
-            The bug may be fixed, or you're not on iOS Safari.
+            Both single and dual track setSinkId() Promises resolved successfully.<br>
+            <br>
+            <strong>Did audio ACTUALLY switch in both cases?</strong><br>
+            If single track audio stayed on the original device = silent failure bug present.<br>
+            The bug may be fixed, or you're not on iOS Safari, or you need to verify manually.
           </p>
         </div>
       `;
@@ -521,12 +583,15 @@ function updateTestResults() {
 
 // Initialize
 detectDevice();
+initDeviceChangeMonitoring();
 log('WebRTC test page loaded', 'success');
 log('This test uses a local peer connection loop to simulate remote WebRTC streams', 'info');
 receiverStatusText.innerHTML = '<strong>Status:</strong> Ready. Click a "Send" button to start.';
+refreshSpeakerList('initial load');
 
 // Cleanup
 window.addEventListener('beforeunload', () => {
+  clearTimeout(deviceChangeTimer);
   if (localPeer) localPeer.close();
   if (remotePeer) remotePeer.close();
   if (audioContext) audioContext.close();
