@@ -33,6 +33,7 @@ let speakers = [];
 let currentStreamType = null;
 let deviceChangeTimer = null;
 let audioReplayTimer = null;
+let audioContextResumeTimer = null;
 let isCleaningUp = false;
 
 // Test results
@@ -227,6 +228,49 @@ function attachAudioElementEventHandlers(audio) {
   log('✓ Audio tag event handlers attached', 'success');
 }
 
+function scheduleAudioContextResume(reason) {
+  if (!audioContext || isCleaningUp || audioContext.state === 'closed') return;
+
+  clearTimeout(audioContextResumeTimer);
+  log(`AudioContext ${reason}, state=${audioContext.state}; retry resume() after 100ms`, 'warning');
+
+  audioContextResumeTimer = setTimeout(async () => {
+    if (!audioContext || isCleaningUp || audioContext.state === 'closed') return;
+
+    try {
+      await audioContext.resume();
+      log(`✓ AudioContext resume() retry succeeded, state=${audioContext.state}`, 'success');
+    } catch (err) {
+      log(`✗ AudioContext resume() retry failed: ${err.name} - ${err.message}`, 'error');
+    }
+  }, 100);
+}
+
+function attachAudioContextEventHandlers(context) {
+  if (context._eventHandlersAttached) return;
+  context._eventHandlersAttached = true;
+
+  context.addEventListener('statechange', () => {
+    log(`AudioContext statechange: ${context.state}`, context.state === 'running' ? 'success' : 'warning');
+
+    if (context.state !== 'running' && context.state !== 'closed') {
+      scheduleAudioContextResume('state changed');
+    }
+  });
+
+  log(`✓ AudioContext event handlers attached, initial state=${context.state}`, 'success');
+}
+
+function createAudioContextIfNeeded() {
+  if (!audioContext || audioContext.state === 'closed') {
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    attachAudioContextEventHandlers(audioContext);
+    log(`AudioContext created, sample rate: ${audioContext.sampleRate}Hz, state=${audioContext.state}`, 'sender');
+  }
+
+  return audioContext;
+}
+
 // Create peer connections
 function createPeerConnections() {
   log('Creating WebRTC peer connections...', 'sender');
@@ -343,13 +387,12 @@ function updateConnectionStatus() {
 async function loadAudioFile(filePath) {
   log(`Loading audio file: ${filePath}`, 'sender');
 
-  if (!audioContext) {
-    audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    log(`AudioContext created, sample rate: ${audioContext.sampleRate}Hz`, 'sender');
-  }
+  createAudioContextIfNeeded();
 
-  if (audioContext.state === 'suspended') {
+  if (audioContext.state !== 'running' && audioContext.state !== 'closed') {
+    log(`AudioContext state before loading file: ${audioContext.state}`, 'warning');
     await audioContext.resume();
+    log(`AudioContext state after resume(): ${audioContext.state}`, audioContext.state === 'running' ? 'success' : 'warning');
   }
 
   const response = await fetch(filePath);
@@ -679,6 +722,7 @@ window.addEventListener('beforeunload', () => {
   isCleaningUp = true;
   clearTimeout(deviceChangeTimer);
   clearTimeout(audioReplayTimer);
+  clearTimeout(audioContextResumeTimer);
   if (localPeer) localPeer.close();
   if (remotePeer) remotePeer.close();
   if (audioContext) audioContext.close();
