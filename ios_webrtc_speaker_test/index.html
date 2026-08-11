@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>iOS WebRTC Speaker Switch Bug Test</title>
+    <title>iOS Safari: setSinkId() Silent Failure Test (WebRTC)</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
@@ -188,14 +188,16 @@
     </style>
 </head>
 <body>
-    <h1>🧪 iOS Safari WebRTC Speaker Switch Bug Test</h1>
+    <h1>🧪 iOS Safari: setSinkId() Silent Failure Test</h1>
 
     <div class="bug-info">
         <h3>🐛 Bug Description:</h3>
         <p>On iOS Safari, when an audio element receives a <strong>remote MediaStream via WebRTC</strong> with only ONE audio track,
-           setSinkId() fails to switch speakers. With TWO tracks, it works.</p>
-        <p><strong>Test Method:</strong> Create a local WebRTC peer connection loop. Sender loads files and transmits via WebRTC.
-           Receiver gets the remote stream and attempts speaker switching.</p>
+           <code>setSinkId()</code> <strong>appears to succeed</strong> (Promise resolves, sinkId property updates) but the
+           <strong>audio output doesn't actually switch</strong>. With TWO tracks, it works correctly.</p>
+        <p><strong>This is a silent failure</strong> - no errors thrown, making it very difficult to detect.</p>
+        <p><strong>Test Method:</strong> Local WebRTC peer connection. Single track vs dual track.
+           Physically listen to verify if audio actually switches devices.</p>
     </div>
 
     <div class="device-info">
@@ -236,11 +238,21 @@
 
             <div id="receiverStreamInfo" class="stream-info">No remote stream yet</div>
 
+            <div style="background: #fff3cd; padding: 10px; border-radius: 4px; margin: 10px 0; font-size: 12px;">
+                <strong>⚠️ How to verify:</strong> After switching speakers, <strong>put your ear near the device</strong>.
+                If you can hear audio clearly = bug (didn't switch). If audio is faint/distant = working (switched correctly).
+            </div>
+
             <div class="section-title">Get Device Permissions (Optional):</div>
             <button id="getMicBtn" class="success">🎤 Get Microphone Permission</button>
+            <button id="refreshMicBtn">Refresh Microphones</button>
             <span id="micStatus" style="margin-left: 8px; font-size: 12px;"></span>
+            <br>
+            <select id="micSelect" disabled>
+                <option value="">Click "Refresh Microphones" first</option>
+            </select>
             <p style="font-size: 12px; color: #666; margin: 5px 0;">
-                ℹ️ Get mic permission to see full device labels. Audio won't be played.
+                ℹ️ Get mic permission to see full device labels. Switching mic only captures it for testing; audio won't be played.
             </p>
 
             <div class="section-title">Speaker Control:</div>
