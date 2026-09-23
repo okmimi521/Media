@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Audio/Video Tag Test</title>
+  <style>
+    body { max-width: 720px; margin: 24px auto; padding: 0 16px; font-family: sans-serif; }
+    label, select, button, audio, video { display: block; margin: 12px 0; }
+    select, button { min-height: 40px; }
+    audio, video { width: 100%; background: #111; }
+    #status { white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <h1>Audio/Video Tag Test</h1>
+
+  <label for="file">Audio file</label>
+  <select id="file">
+    <option value="../P501_C_english_f2_SWB_48k.wav">P501_C_english_f2_SWB_48k.wav</option>
+    <option value="../test4.wav">test4.wav</option>
+    <option value="../test_stereo1.wav">test_stereo1.wav</option>
+    <option value="../hello_google.wav">hello_google.wav</option>
+    <option value="../zoom-audio-share.wav">zoom-audio-share.wav</option>
+    <option value="../test3.mp3">test3.mp3</option>
+    <option value="../test2.mp3">test2.mp3</option>
+    <option value="../stereo_demo.mp3">stereo_demo.mp3</option>
+    <option value="../test1.mp3">test1.mp3</option>
+  </select>
+
+  <label for="tag">Playback tag</label>
+  <select id="tag">
+    <option value="audio">audio</option>
+    <option value="video">video</option>
+  </select>
+
+  <div id="player"></div>
+  <button id="getUserMedia" type="button">Call getUserMedia</button>
+  <div id="status">Microphone: not requested</div>
+
+  <script src="video_audio_demo.js"></script>
+</body>
+</html>
