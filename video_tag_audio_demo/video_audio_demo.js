@@ -9,6 +9,7 @@ function createPlayer() {
   const media = document.createElement(tag.value);
   media.src = file.value;
   media.controls = true;
+  media.loop = true;
   media.playsInline = true;
   player.replaceChildren(media);
 }
