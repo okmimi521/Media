@@ -20,10 +20,11 @@
     <option value="chrono.mp3">chrono.mp3</option>
   </select>
 
-  <label for="tag">Playback tag</label>
-  <select id="tag">
-    <option value="audio">audio</option>
-    <option value="video">video</option>
+  <label for="method">Playback method</label>
+  <select id="method">
+    <option value="new-audio">new Audio()</option>
+    <option value="audio">document.createElement('audio')</option>
+    <option value="video">document.createElement('video')</option>
   </select>
 
   <div id="player"></div>
