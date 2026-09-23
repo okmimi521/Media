@@ -3,34 +3,20 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Audio/Video Tag Test</title>
+  <title>AudioContext File to Stream Test</title>
   <style>
     body { max-width: 720px; margin: 24px auto; padding: 0 16px; font-family: sans-serif; }
-    label, select, button, audio, video { display: block; margin: 12px 0; }
-    select, button { min-height: 40px; }
-    audio, video { width: 100%; background: #111; }
-    #status { white-space: pre-wrap; }
+    audio, button { display: block; margin: 12px 0; }
+    audio { width: 100%; }
+    button { min-height: 40px; }
   </style>
 </head>
 <body>
-  <h1>Audio/Video Tag Test</h1>
-
-  <label for="file">Audio file</label>
-  <select id="file">
-    <option value="chrono.mp3">chrono.mp3</option>
-  </select>
-
-  <label for="method">Playback method</label>
-  <select id="method">
-    <option value="new-audio">new Audio()</option>
-    <option value="audio">document.createElement('audio')</option>
-    <option value="video">document.createElement('video')</option>
-  </select>
-
+  <h1>AudioContext File to Stream Test</h1>
   <div id="player"></div>
+  <button id="play" type="button" disabled>Play</button>
   <button id="getUserMedia" type="button">Call getUserMedia</button>
-  <div id="status">Microphone: not requested</div>
-
+  <div id="status">Ready</div>
   <script src="video_audio_demo.js"></script>
 </body>
 </html>
