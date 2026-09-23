@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>iOS Audio Tag / MediaStream Test</title>
+  <style>
+    body { max-width: 720px; margin: 24px auto; padding: 0 16px; font-family: sans-serif; }
+    audio, select, button { display: block; margin: 12px 0; }
+    audio { width: 100%; }
+    select, button { min-height: 40px; }
+  </style>
+</head>
+<body>
+  <h1>iOS Audio Tag / MediaStream Test</h1>
+  <label for="mode">Playback mode</label>
+  <select id="mode">
+    <option value="direct">Audio tag direct</option>
+    <option value="stream">AudioContext → MediaStream</option>
+  </select>
+  <div id="player"></div>
+  <button id="play" type="button">Play</button>
+  <button id="getUserMedia" type="button">Call getUserMedia</button>
+  <div id="status">Ready</div>
+  <script src="video_audio_demo.js"></script>
+</body>
+</html>
