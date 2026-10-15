@@ -260,8 +260,11 @@ if (query.get('auto') === '0') {
 }
 
 if (checked('autoRun')) {
-  log('页面加载后自动执行第一次请求（模拟线上 useEffect）');
-  runAll();
+  log('页面加载完成，等待 effect 时机后自动执行第一次请求');
+  setTimeout(() => {
+    log('开始自动执行第一次请求（模拟线上 useEffect）');
+    runAll();
+  }, 0);
 } else {
   log('未自动执行，请点击“用户点击后请求”。');
 }
