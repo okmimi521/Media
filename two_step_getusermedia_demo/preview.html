@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Preview 页面</title>
+  <style>
+    body { max-width: 960px; margin: 20px auto; padding: 0 14px; font: 14px -apple-system, BlinkMacSystemFont, sans-serif; line-height: 1.5; }
+    button { margin: 4px 4px 4px 0; padding: 8px 12px; cursor: pointer; }
+    label { display: block; margin: 8px 0; }
+    input[type="number"] { width: 70px; }
+    video { width: 48%; min-height: 160px; margin: 8px 1% 8px 0; background: #222; vertical-align: top; }
+    pre { max-height: 440px; overflow: auto; padding: 12px; background: #111; color: #ddd; white-space: pre-wrap; word-break: break-word; }
+    .error { color: #ff8a8a; }
+    .hint { color: #555; }
+    .box { padding: 10px 12px; border: 1px solid #ddd; border-radius: 6px; margin: 12px 0; }
+  </style>
+</head>
+<body>
+  <h1>第二个页面：Preview</h1>
+  <p>本页是 Join 跳转后的新页面，默认在页面加载后自动请求权限。</p>
+
+  <div class="box">
+    <strong>测试开关</strong>
+    <label><input id="autoRun" type="checkbox" checked> 页面加载后自动请求（模拟线上 useEffect）</label>
+    <label><input id="stopProbe" type="checkbox" checked> 第一次成功后立即停止探测流</label>
+    <label><input id="useProjectConstraints" type="checkbox" checked> 第二次使用项目中的 deviceId 和视频约束</label>
+    <label><input id="runSecond" type="checkbox" checked> 第一次结束后自动请求第二次 video</label>
+    <label>第二次请求延迟：<input id="secondDelay" type="number" min="0" value="0"> ms</label>
+  </div>
+
+  <button id="runClick">用户点击后请求</button>
+  <button id="first">只请求第一次</button>
+  <button id="second" disabled>只请求第二次</button>
+  <button id="stop">停止所有轨道</button>
+  <button id="back">返回 Join 页面</button>
+
+  <p class="hint">重点对比：从 Join 跳转后自动请求，和进入 Preview 后再点击“用户点击后请求”。</p>
+
+  <div>
+    <video id="firstVideo" autoplay muted playsinline></video>
+    <video id="secondVideo" autoplay muted playsinline></video>
+  </div>
+
+  <pre id="log"></pre>
+  <script src="./preview.js"></script>
+</body>
+</html>
