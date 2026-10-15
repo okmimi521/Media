@@ -15,3 +15,9 @@ document.querySelector('#join').onclick = () => {
   log(`点击 Join，开始真实页面跳转：${nextUrl}`);
   location.href = nextUrl;
 };
+
+document.querySelector('#manual').onclick = () => {
+  const nextUrl = `./preview.html?from=join&auto=0&joinTime=${Date.now()}`;
+  log(`进入手动测试页面：${nextUrl}`);
+  location.href = nextUrl;
+};

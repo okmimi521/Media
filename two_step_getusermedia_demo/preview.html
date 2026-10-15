@@ -27,9 +27,11 @@
     <label><input id="useProjectConstraints" type="checkbox" checked> 第二次使用项目中的 deviceId 和视频约束</label>
     <label><input id="runSecond" type="checkbox" checked> 第一次结束后自动请求第二次 video</label>
     <label>第二次请求延迟：<input id="secondDelay" type="number" min="0" value="0"> ms</label>
+    <label>模拟 cleanup 延迟：<input id="simulationCleanupDelay" type="number" min="0" value="500"> ms</label>
   </div>
 
   <button id="runClick">用户点击后请求</button>
+  <button id="simulateRemount">模拟挂起请求 + cleanup + 重挂载</button>
   <button id="first">只请求第一次</button>
   <button id="second" disabled>只请求第二次</button>
   <button id="stop">停止所有轨道</button>

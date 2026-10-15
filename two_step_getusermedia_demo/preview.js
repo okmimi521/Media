@@ -2,11 +2,13 @@ const firstVideo = document.querySelector('#firstVideo');
 const secondVideo = document.querySelector('#secondVideo');
 const secondButton = document.querySelector('#second');
 const logElement = document.querySelector('#log');
+const query = new URLSearchParams(location.search);
 
 let firstStream = null;
 let secondStream = null;
 let firstVideoDeviceId = '';
 let firstRequestFinished = false;
+let simulationSequence = 0;
 
 const firstConstraints = {
   audio: true,
@@ -144,6 +146,52 @@ function wait(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+function simulationRequest(label, constraints) {
+  const startedAt = performance.now();
+  logPageState(`${label}开始前`);
+  log(`${label} getUserMedia call\nconstraints=${json(constraints)}`);
+
+  return navigator.mediaDevices.getUserMedia(constraints).then(stream => {
+    log(`${label}成功，耗时=${Math.round(performance.now() - startedAt)} ms，stream=${stream.id}`);
+    info(stream, label);
+    return stream;
+  }).catch(error => {
+    log(`${label}失败，耗时=${Math.round(performance.now() - startedAt)} ms：${error.name}: ${error.message || '(无 message)'}`, true);
+    throw error;
+  });
+}
+
+async function simulateRemount() {
+  const sequence = ++simulationSequence;
+  const cleanupDelay = Math.max(0, Number(document.querySelector('#simulationCleanupDelay').value) || 0);
+
+  log('--- 开始模拟：旧请求未结束 → cleanup → 重挂载 → 新请求 ---');
+  log('注意：cleanup 不会主动取消浏览器原生 getUserMedia Promise，只会让旧组件不再接收结果。');
+
+  const oldRequest = simulationRequest(`SIM#${sequence} 旧组件请求`, firstConstraints)
+    .then(stream => {
+      stream.getTracks().forEach(track => track.stop());
+      log(`SIM#${sequence} 旧组件请求晚到，组件已卸载，已停止它返回的轨道`);
+      return stream;
+    })
+    .catch(() => null);
+
+  await wait(cleanupDelay);
+  log(`SIM#${sequence} 模拟组件 cleanup：忽略旧请求结果，不调用 abort()`);
+  logPageState(`SIM#${sequence} cleanup 时`);
+
+  const newRequest = simulationRequest(`SIM#${sequence} 新组件请求`, firstConstraints)
+    .then(stream => {
+      stream.getTracks().forEach(track => track.stop());
+      log(`SIM#${sequence} 新组件请求返回，已停止新请求轨道`);
+      return stream;
+    })
+    .catch(() => null);
+
+  await Promise.all([oldRequest, newRequest]);
+  log(`--- SIM#${sequence} 结束：两个请求均已 settle ---`);
+}
+
 async function runAll() {
   log('--- 开始 Preview 自动流程 ---');
   try {
@@ -181,6 +229,10 @@ document.querySelector('#runClick').onclick = async () => {
   try { await runAll(); } catch (_) {}
 };
 
+document.querySelector('#simulateRemount').onclick = async () => {
+  try { await simulateRemount(); } catch (_) {}
+};
+
 document.querySelector('#first').onclick = async () => {
   try { await requestFirst(); } catch (_) {}
 };
@@ -202,6 +254,10 @@ document.querySelector('#back').onclick = () => {
 log(`Preview 页面已加载，origin=${location.origin}`);
 log(`mediaDevices=${Boolean(navigator.mediaDevices)}, getUserMedia=${Boolean(navigator.mediaDevices?.getUserMedia)}`);
 logPageState('页面加载时');
+
+if (query.get('auto') === '0') {
+  document.querySelector('#autoRun').checked = false;
+}
 
 if (checked('autoRun')) {
   log('页面加载后自动执行第一次请求（模拟线上 useEffect）');
