@@ -3,23 +3,40 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>getUserMedia 两次请求 Demo</title>
+  <title>getUserMedia 权限诊断 Demo</title>
   <style>
-    body { max-width: 900px; margin: 24px auto; padding: 0 16px; font: 14px sans-serif; }
-    button { margin: 4px; padding: 8px 12px; cursor: pointer; }
-    video { width: 48%; min-height: 180px; margin: 8px 1%; background: #222; }
-    pre { max-height: 360px; overflow: auto; padding: 12px; background: #111; color: #ddd; white-space: pre-wrap; }
-    .error { color: #f88; }
+    body { max-width: 960px; margin: 20px auto; padding: 0 14px; font: 14px -apple-system, BlinkMacSystemFont, sans-serif; line-height: 1.5; }
+    button { margin: 4px 4px 4px 0; padding: 8px 12px; cursor: pointer; }
+    label { display: block; margin: 8px 0; }
+    input[type="number"] { width: 70px; }
+    video { width: 48%; min-height: 160px; margin: 8px 1% 8px 0; background: #222; vertical-align: top; }
+    pre { max-height: 420px; overflow: auto; padding: 12px; background: #111; color: #ddd; white-space: pre-wrap; word-break: break-word; }
+    .error { color: #ff8a8a; }
+    .hint { color: #555; }
+    .box { padding: 10px 12px; border: 1px solid #ddd; border-radius: 6px; margin: 12px 0; }
   </style>
 </head>
 <body>
-  <h1>两次 getUserMedia 请求</h1>
-  <p>第一次请求 audio + video，第二次只请求 video。</p>
+  <h1>getUserMedia 权限诊断 Demo</h1>
+  <p>默认模拟线上流程：第一次请求 audio + video 做权限探测，成功后停止第一次流，再自动请求第二次 video。</p>
+
+  <div class="box">
+    <strong>测试开关</strong>
+    <label><input id="autoRun" type="checkbox" checked> 页面加载后自动执行（模拟线上 useEffect）</label>
+    <label><input id="stopProbe" type="checkbox" checked> 第一次成功后立即停止探测流（模拟权限探测）</label>
+    <label><input id="useProjectConstraints" type="checkbox" checked> 第二次使用项目中的分辨率、帧率和 deviceId 约束</label>
+    <label><input id="runSecond" type="checkbox" checked> 第一次结束后自动执行第二次 video 请求</label>
+    <label>第二次请求延迟：<input id="secondDelay" type="number" min="0" value="0"> ms</label>
+  </div>
 
   <button id="runAll">一键执行</button>
-  <button id="first">第一次请求</button>
-  <button id="second" disabled>第二次请求</button>
-  <button id="stop">停止轨道</button>
+  <button id="runByClick">用户点击后执行</button>
+  <button id="first">只请求第一次</button>
+  <button id="second" disabled>只请求第二次</button>
+  <button id="stop">停止所有轨道</button>
+  <button id="clear">清空日志</button>
+
+  <p class="hint">测试原生弹框时：分别测试“页面自动执行”和“用户点击后执行”；弹框出现后切到后台再回来，观察日志里的 visibility、focus 和 userActivation。</p>
 
   <div>
     <video id="firstVideo" autoplay muted playsinline></video>
