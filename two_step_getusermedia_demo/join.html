@@ -3,20 +3,33 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Join 页面</title>
+  <title>单页 getUserMedia 生命周期 Demo</title>
   <style>
-    body { max-width: 680px; margin: 48px auto; padding: 0 16px; font: 16px -apple-system, BlinkMacSystemFont, sans-serif; }
-    button { margin-right: 8px; padding: 10px 18px; border: 1px solid #777; border-radius: 4px; background: #fff; color: #111; font-size: 16px; cursor: pointer; }
-    pre { margin-top: 24px; padding: 12px; background: #111; color: #ddd; white-space: pre-wrap; }
+    body { max-width: 760px; margin: 36px auto; padding: 0 16px; font: 16px -apple-system, BlinkMacSystemFont, sans-serif; }
+    button { margin: 4px 6px 4px 0; padding: 9px 14px; border: 1px solid #777; border-radius: 4px; background: #fff; color: #111; font-size: 15px; cursor: pointer; }
+    video { width: 320px; max-width: 100%; margin-top: 12px; background: #222; }
+    pre { min-height: 180px; margin-top: 20px; padding: 12px; overflow: auto; background: #111; color: #ddd; white-space: pre-wrap; }
     .hint { color: #555; }
   </style>
 </head>
 <body>
-  <h1>第一个页面：Join</h1>
-  <p>点击后进行真实 URL 跳转，模拟线上从 Waiting Room 进入 Preview 页面。</p>
-  <button id="join">Join</button>
-  <button id="manual">进入 Preview（不自动请求）</button>
-  <p class="hint">跳转后的 Preview 页面会在加载完成后自动调用 getUserMedia。</p>
+  <section id="joinView">
+    <h1>Waiting Room</h1>
+    <p>点击 Join 后在同一个页面切换到 Preview，模拟实际项目的 React 状态切换。</p>
+    <button id="join">Join</button>
+    <label><input id="autoRemount" type="checkbox"> Join 后 100ms 自动 cleanup + 重挂载</label>
+  </section>
+
+  <section id="previewView" hidden>
+    <h1>Preview</h1>
+    <p class="hint">页面切换后自动执行 effect：第一次 audio + video，随后模拟 SDK 初始化，再请求第二次 video。</p>
+    <button id="remount">模拟 cleanup + 重挂载</button>
+    <button id="stop">停止轨道</button>
+    <button id="back">返回 Join</button>
+    <br>
+    <video id="video" autoplay muted playsinline></video>
+  </section>
+
   <pre id="log"></pre>
   <script src="./join.js"></script>
 </body>
