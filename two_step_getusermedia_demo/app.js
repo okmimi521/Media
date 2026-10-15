@@ -106,14 +106,16 @@ function stopAll() {
   log('已停止所有轨道');
 }
 
-document.querySelector('#runAll').onclick = async () => {
+async function runAll() {
   try {
     await requestFirst();
     await requestSecond();
   } catch (_) {
     // 错误已经写入页面日志。
   }
-};
+}
+
+document.querySelector('#runAll').onclick = runAll;
 
 document.querySelector('#first').onclick = async () => {
   try { await requestFirst(); } catch (_) {}
@@ -125,3 +127,5 @@ document.querySelector('#second').onclick = async () => {
 
 document.querySelector('#stop').onclick = stopAll;
 log(`页面已加载，Caller origin: ${location.origin}`);
+log('页面加载后自动执行一键请求');
+runAll();
