@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>getUserMedia 与 replaceState 时序测试</title>
+  <style>
+    body { max-width: 760px; margin: 32px auto; padding: 0 16px; font: 16px -apple-system, BlinkMacSystemFont, sans-serif; line-height: 1.6; }
+    select, button { max-width: 100%; margin: 8px 0; padding: 10px; font-size: 16px; }
+    pre { padding: 12px; background: #111; color: #ddd; white-space: pre-wrap; overflow-wrap: anywhere; }
+  </style>
+</head>
+<body>
+  <h1>首次权限请求与 URL 更新</h1>
+  <p>版本 history-race-v1。每次请求 audio + video，只测试首次授权框。</p>
+  <label for="mode">测试顺序：</label>
+  <select id="mode">
+    <option value="during">先请求权限，900ms 后 replaceState（线上顺序）</option>
+    <option value="before">先 replaceState，900ms 后请求权限（对照）</option>
+    <option value="none">只请求权限，不改 URL（对照）</option>
+  </select>
+  <br>
+  <button id="run">Join：自动进入测试</button>
+  <p>选择“线上顺序”时，授权框出现后先等待至少 2 秒，观察是否自动消失；请求成功后会立即停止轨道。</p>
+  <p>每轮保持相同的“询问”权限状态，并通过此链接重开页面：<a href="./history_race.html">重新测试（重置 URL）</a>。</p>
+  <pre id="log"></pre>
+  <script src="./history_race.js?v=history-race-v1"></script>
+</body>
+</html>
