@@ -15,9 +15,10 @@
 <body>
   <section id="joinView">
     <h1>Waiting Room</h1>
+    <p class="hint">Demo version: lifecycle-v3</p>
     <p>点击 Join 后在同一个页面切换到 Preview，模拟实际项目的 React 状态切换。</p>
     <button id="join">Join</button>
-    <label><input id="autoRemount" type="checkbox"> Join 后 100ms 自动 cleanup + 重挂载</label>
+    <label><input id="autoRemount" type="checkbox"> 第一次请求 pending 时立即 cleanup + 重挂载</label>
   </section>
 
   <section id="previewView" hidden>
@@ -26,11 +27,12 @@
     <button id="remount">模拟 cleanup + 重挂载</button>
     <button id="stop">停止轨道</button>
     <button id="back">返回 Join</button>
+    <button id="copyLog">复制诊断日志</button>
     <br>
     <video id="video" autoplay muted playsinline></video>
   </section>
 
   <pre id="log"></pre>
-  <script src="./join.js"></script>
+  <script src="./join.js?v=lifecycle-v3"></script>
 </body>
 </html>

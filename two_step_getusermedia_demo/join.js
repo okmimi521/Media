@@ -7,6 +7,9 @@ const firstConstraints = { audio: true, video: true };
 let previewGeneration = 0;
 let activeStreams = [];
 let firstVideoDeviceId = '';
+let remountOnFirstRequest = false;
+let gumSequence = 0;
+let pendingGumRequests = 0;
 
 function log(message) {
   const line = `[${new Date().toLocaleTimeString('zh-CN', { hour12: false })}] ${message}`;
@@ -17,6 +20,70 @@ function log(message) {
 
 function json(value) {
   try { return JSON.stringify(value); } catch (_) { return String(value); }
+}
+
+function pageState() {
+  return json({
+    href: location.href,
+    visibility: document.visibilityState,
+    hidden: document.hidden,
+    focus: document.hasFocus(),
+    userActivation: navigator.userActivation
+      ? {
+          isActive: navigator.userActivation.isActive,
+          hasBeenActive: navigator.userActivation.hasBeenActive
+        }
+      : 'unsupported',
+    pendingGumRequests
+  });
+}
+
+async function logPermissionState(label) {
+  if (!navigator.permissions?.query) {
+    log(`${label} permissions.query=unsupported`);
+    return;
+  }
+  for (const name of ['camera', 'microphone']) {
+    try {
+      const result = await navigator.permissions.query({ name });
+      log(`${label} permission.${name}=${result.state}`);
+    } catch (error) {
+      log(`${label} permission.${name}=error ${error.name}: ${error.message || '(无 message)'}`);
+    }
+  }
+}
+
+function tracedGetUserMedia(label, constraints) {
+  const id = ++gumSequence;
+  const startedAt = performance.now();
+  pendingGumRequests += 1;
+  log(`[GUM#${id}] CALL ${label} pending=${pendingGumRequests}`);
+  log(`[GUM#${id}] constraints=${json(constraints)}`);
+  log(`[GUM#${id}] page=${pageState()}`);
+  void logPermissionState(`[GUM#${id}] before`);
+
+  let request;
+  try {
+    request = navigator.mediaDevices.getUserMedia(constraints);
+  } catch (error) {
+    request = Promise.reject(error);
+  }
+
+  return request.then(stream => {
+    log(`[GUM#${id}] RESOLVE elapsed=${Math.round(performance.now() - startedAt)}ms stream=${stream.id}`);
+    stream.getTracks().forEach(track => {
+      log(`[GUM#${id}] track=${track.kind} readyState=${track.readyState} label=${track.label}`);
+    });
+    return stream;
+  }).catch(error => {
+    log(`[GUM#${id}] REJECT elapsed=${Math.round(performance.now() - startedAt)}ms name=${error.name} message=${error.message || '(无 message)'}`);
+    log(`[GUM#${id}] reject page=${pageState()}`);
+    void logPermissionState(`[GUM#${id}] after-reject`);
+    throw error;
+  }).finally(() => {
+    pendingGumRequests -= 1;
+    log(`[GUM#${id}] SETTLE pending=${pendingGumRequests}`);
+  });
 }
 
 function stopStream(stream) {
@@ -53,9 +120,8 @@ function secondConstraints() {
 }
 
 async function requestMedia(generation, label, constraints) {
-  log(`${label} getUserMedia call: ${json(constraints)}`);
   try {
-    const stream = await navigator.mediaDevices.getUserMedia(constraints);
+    const stream = await tracedGetUserMedia(label, constraints);
     log(`${label} getUserMedia result: stream=${stream.id}`);
 
     if (generation !== previewGeneration) {
@@ -73,7 +139,13 @@ async function requestMedia(generation, label, constraints) {
 async function runPreview(generation) {
   log('Preview effect 开始');
 
-  const firstStream = await requestMedia(generation, '第一次 audio + video', firstConstraints);
+  const firstRequest = requestMedia(generation, '第一次 audio + video', firstConstraints);
+  if (remountOnFirstRequest && generation === previewGeneration) {
+    remountOnFirstRequest = false;
+    log('第一次 getUserMedia 仍在 pending，立即执行 Preview cleanup');
+    remountPreview();
+  }
+  const firstStream = await firstRequest;
   if (!firstStream || generation !== previewGeneration) {
     return;
   }
@@ -109,18 +181,20 @@ function mountPreview(writeHistory = true) {
   const generation = ++previewGeneration;
   log('Join 完成：同一文档切换到 Preview，URL 已更新');
   log(`Preview mount generation=${generation}`);
+  log(`Preview mount page=${pageState()}`);
+  void logPermissionState('Preview mount');
   setTimeout(() => runPreview(generation), 0);
   const autoRemount = document.querySelector('#autoRemount');
   if (autoRemount.checked) {
     autoRemount.checked = false;
-    setTimeout(remountPreview, 100);
+    remountOnFirstRequest = true;
   }
 }
 
 function unmountPreview() {
   previewGeneration += 1;
   stopAllStreams();
-  log(`Preview cleanup generation=${previewGeneration}`);
+  log(`Preview cleanup generation=${previewGeneration} page=${pageState()}`);
 }
 
 function remountPreview() {
@@ -153,7 +227,17 @@ document.querySelector('#stop').addEventListener('click', () => {
 
 document.querySelector('#back').addEventListener('click', () => showJoin(true));
 
+document.querySelector('#copyLog').addEventListener('click', async () => {
+  try {
+    await navigator.clipboard.writeText(logElement.textContent);
+    log('诊断日志已复制');
+  } catch (error) {
+    log(`复制日志失败：${error.name}: ${error.message || '(无 message)'}`);
+  }
+});
+
 window.addEventListener('popstate', () => {
+  log(`页面事件：popstate page=${pageState()}`);
   if (new URLSearchParams(location.search).get('view') === 'preview') {
     mountPreview(false);
   } else {
@@ -161,11 +245,11 @@ window.addEventListener('popstate', () => {
   }
 });
 
-['visibilitychange', 'pagehide', 'pageshow', 'blur', 'focus'].forEach(eventName => {
-  window.addEventListener(eventName, () => log(`页面事件：${eventName}, visibility=${document.visibilityState}`));
+['visibilitychange', 'pagehide', 'pageshow', 'blur', 'focus', 'beforeunload', 'unload'].forEach(eventName => {
+  window.addEventListener(eventName, () => log(`页面事件：${eventName} page=${pageState()}`));
 });
 
-log(`单页 Demo 已加载，origin=${location.origin}`);
+log(`单页 Demo lifecycle-v3 已加载，origin=${location.origin}`);
 log(`href=${location.href}`);
 
 if (new URLSearchParams(location.search).get('view') === 'preview') {
