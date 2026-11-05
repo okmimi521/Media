@@ -8,7 +8,7 @@
 <body>
   <div id="status">正在尝试播放…</div>
 
-  <audio id="player" src="hello_google.wav" preload="auto" loop></audio>
+  <audio id="player" src="../hello_google.wav" preload="auto" loop controls></audio>
 
   <script>
     const audio = document.getElementById('player');
@@ -16,7 +16,14 @@
 
     const interactionEvents = ['click', 'touchstart', 'keydown', 'pointerdown'];
 
-    function playOnInteraction() {
+    audio.addEventListener('play', () => {
+      statusEl.textContent = '播放中';
+      interactionEvents.forEach((evt) => document.removeEventListener(evt, playOnInteraction));
+    });
+    audio.addEventListener('pause', () => { statusEl.textContent = '已暂停'; });
+
+    function playOnInteraction(event) {
+      if (event.target === audio) return;
       audio.play()
         .then(() => { statusEl.textContent = '播放中（用户交互后开始）'; })
         .catch((err) => { statusEl.textContent = '播放失败：' + err.message; });
