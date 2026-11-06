@@ -4,11 +4,17 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>share audio test</title>
+  <style>
+    button { margin-top: 12px; padding: 12px 32px; font-size: 20px; }
+    #pause { margin-left: 24px; }
+  </style>
 </head>
 <body>
   <div id="status">正在尝试播放…</div>
 
-  <audio id="player" src="./hello_google.wav" preload="auto" loop controls></audio>
+  <audio id="player" src="../hello_google.wav" preload="auto" loop></audio>
+  <button id="play" type="button">播放</button>
+  <button id="pause" type="button">暂停</button>
 
   <script>
     const audio = document.getElementById('player');
@@ -22,8 +28,19 @@
     });
     audio.addEventListener('pause', () => { statusEl.textContent = '已暂停'; });
 
+    document.getElementById('play').addEventListener('click', () => {
+      audio.play().catch((err) => {
+        if (err.name !== 'AbortError') statusEl.textContent = '播放失败：' + err.message;
+      });
+    });
+    document.getElementById('pause').addEventListener('click', () => {
+      interactionEvents.forEach((evt) => document.removeEventListener(evt, playOnInteraction));
+      audio.pause();
+      statusEl.textContent = '已暂停';
+    });
+
     function playOnInteraction(event) {
-      if (event.target === audio) return;
+      if (event.target === audio || ['play', 'pause'].includes(event.target.id)) return;
       audio.play()
         .then(() => { statusEl.textContent = '播放中（用户交互后开始）'; })
         .catch((err) => { statusEl.textContent = '播放失败：' + err.message; });
