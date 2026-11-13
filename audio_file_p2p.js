@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // 单页面 demo：把音频文件通过 WebRTC RTCPeerConnection 传输，用 <audio> 标签
-// 播放，play 时音量设为 0，10 秒后自动恢复为 1。
+// 播放，play 时设为 muted（静音），10 秒后自动 unmute（恢复声音）。
 //
 // 关键点：发送端 pc1 与接收端 pc2 都在本页面里，offer/answer/ICE candidate
 // 全部通过页面内的回调直接交换，不需要任何信令服务器，也不需要双 tab。
@@ -20,7 +20,7 @@ const AUDIO_FILES = [
   'zoom-audio-share.wav'
 ];
 
-const VOLUME_RESTORE_DELAY_MS = 10000; // 10 秒后恢复音量
+const UNMUTE_DELAY_MS = 10000; // 10 秒后 unmute
 
 // DOM Elements
 const fileSelect = document.getElementById('fileSelect');
@@ -29,16 +29,15 @@ const fileInfo = document.getElementById('fileInfo');
 const pc1Status = document.getElementById('pc1Status');
 const pc2Status = document.getElementById('pc2Status');
 const mainStatus = document.getElementById('mainStatus');
-const audioContainer = document.getElementById('audioContainer');
 const countdownEl = document.getElementById('countdown');
 const volumeFill = document.getElementById('volumeFill');
 const logContainer = document.getElementById('logContainer');
+const audioContainer = document.getElementById('audioContainer');
 
 // Global State
 let pc1 = null;          // 发送端
 let pc2 = null;          // 接收端
 let audioContext = null;
-let audioElement = null;
 let bufferSource = null;
 let volumeTimer = null;
 let countdownTimer = null;
@@ -99,14 +98,9 @@ function loadAudioFile(filePath) {
   });
 }
 
-// ---- 音量 UI --------------------------------------------------------------
-function updateVolumeUI(volume) {
-  if (volumeFill) volumeFill.style.width = (volume * 100).toFixed(1) + '%';
-}
-
-function setVolume(el, volume) {
-  el.volume = Math.min(1, Math.max(0, volume));
-  updateVolumeUI(el.volume);
+// ---- 静音 UI ---------------------------------------------------------------
+function updateMuteUI(muted) {
+  if (volumeFill) volumeFill.style.width = muted ? '0%' : '100%';
 }
 
 function startCountdown(endTime) {
@@ -114,57 +108,51 @@ function startCountdown(endTime) {
   countdownEl.textContent = '';
 
   countdownTimer = setInterval(() => {
-    if (!audioElement) { clearInterval(countdownTimer); return; }
+    if (!audio) { clearInterval(countdownTimer); return; }
     const remaining = Math.max(0, endTime - Date.now());
     if (remaining <= 0) {
       clearInterval(countdownTimer);
       countdownEl.textContent = '';
       return;
     }
-    countdownEl.textContent = '⏳ 将在 ' + (remaining / 1000).toFixed(1) + 's 后恢复音量';
+    countdownEl.textContent = '⏳ 将在 ' + (remaining / 1000).toFixed(1) + 's 后 unmute';
   }, 100);
 }
 
-// ---- 接收端：<audio> 标签播放 + 音量 0 → 1 ----------------------------------
+// ---- 接收端：<audio> 标签播放 + muted → unmute -------------------------------
 function handleRemoteStream(remoteStream) {
   log('📥 接收端收到音频流，用 <audio> 标签播放', 'success');
 
-  if (!audioElement) {
-    audioElement = document.createElement('audio');
-    audioElement.id = 'remoteAudio';
-    audioElement.controls = true;
-    audioElement.autoplay = true;
-    audioElement.loop = false;
-  }
-  audioElement.srcObject = remoteStream;
-
-  audioContainer.innerHTML = '';
-  audioContainer.appendChild(audioElement);
+  // 收到流后再设置 srcObject（audio 标签由 JS 用 createElement 提前创建好）
+  audio.srcObject = remoteStream;
 
   if (volumeTimer) clearTimeout(volumeTimer);
   if (countdownTimer) clearInterval(countdownTimer);
 
-  // 每次 play 都重新执行：音量归零 → 10s 后恢复 1
-  audioElement.onplay = () => {
-    log('▶️ play 事件 —— 音量设为 0', 'warning');
-    volumeRestoreAt = Date.now() + VOLUME_RESTORE_DELAY_MS;
-    // setVolume(audioElement, 0);
+  // 每次 play 都重新执行：静音播放 → 10s 后取消静音
+  audio.onplay = () => {
+    log('▶️ play 事件 —— 设为 muted（静音播放）', 'warning');
+    volumeRestoreAt = Date.now() + UNMUTE_DELAY_MS;
+    audio.muted = true;
+    updateMuteUI(true);
     startCountdown(volumeRestoreAt);
 
     volumeTimer = setTimeout(() => {
-      log('🔊 ' + (VOLUME_RESTORE_DELAY_MS / 1000) + 's 已到 —— 音量设为 1', 'success');
-      setVolume(audioElement, 1);
-    }, VOLUME_RESTORE_DELAY_MS);
+      log('🔊 ' + (UNMUTE_DELAY_MS / 1000) + 's 已到 —— 取消 muted', 'success');
+      audio.muted = false;
+      updateMuteUI(false);
+    }, UNMUTE_DELAY_MS);
   };
 
-  // 流一挂上就先置 0（早于 play 防漏）
-  setVolume(audioElement, 0);
+  // 流一挂上就先静音（早于 play 防漏；muted 状态下 autoplay 也更容易通过）
+  audio.muted = true;
+  updateMuteUI(true);
 
-  audioElement.play().catch((err) => {
+  audio.play().catch((err) => {
     log('⚠️ 自动播放被浏览器拦截 (' + err.name + ')，请点击播放按钮', 'warning');
   });
 
-  setStatus(mainStatus, '✓ 流已接收并通过 <audio> 标签播放（音量 0 → 1 after 10s）');
+  setStatus(mainStatus, '✓ 流已接收并通过 <audio> 标签播放（muted → unmute after 10s）');
 }
 
 // ---- 主流程：页面内两条 RTCPeerConnection 直连 ------------------------------
@@ -242,6 +230,14 @@ AUDIO_FILES.forEach((file) => {
   fileSelect.appendChild(option);
 });
 
+// 用 document.createElement 提前创建 <audio> 标签：
+// 只设置 srcObject = 一个空 MediaStream，其余属性一律不设置。
+// 等到接收端收到流时，再由 handleRemoteStream() 替换 srcObject。
+const audio = document.createElement('audio');
+audio.srcObject = new MediaStream();
+audioContainer.appendChild(audio);
+log('📻 已用 createElement 创建 <audio> 标签，srcObject = new MediaStream()（空流），未设置其他属性', 'info');
+
 startBtn.addEventListener('click', start);
 
 // ---- 清理 ------------------------------------------------------------------
@@ -252,10 +248,8 @@ window.addEventListener('beforeunload', () => {
   if (pc1) pc1.close();
   if (pc2) pc2.close();
   if (audioContext) audioContext.close();
-  if (audioElement) {
-    audioElement.pause();
-    audioElement.srcObject = null;
-  }
+  audio.pause();
+  audio.srcObject = null;
 });
 
 log('页面已加载。选择文件后点击「加载并发送」。', 'info');

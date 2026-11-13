@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Single-Page P2P Audio File → &lt;audio&gt; (volume 0 → 1)</title>
+    <title>Single-Page P2P Audio File → &lt;audio&gt; (muted → unmute)</title>
     <style>
         * { box-sizing: border-box; }
         body {
@@ -79,8 +79,8 @@
             <li>📤 页面内创建 <strong>发送端 pc1</strong>：加载音频文件 → 解码 → 生成 MediaStream → <code>addTrack</code></li>
             <li>📥 同时创建 <strong>接收端 pc2</strong>：<code>ontrack</code> 收到轨道</li>
             <li>📶 pc1 ↔ pc2 本地直连（offer/answer/ICE 全部在页面内回调，走本机 loopback）</li>
-            <li>🔇 接收端用 <strong>&lt;audio&gt; 标签</strong> 播放，play 时 <strong>volume = 0</strong></li>
-            <li>🔊 <strong>10 秒后</strong> 自动 <strong>volume = 1</strong></li>
+            <li>🔇 接收端用 <strong>&lt;audio&gt; 标签</strong> 播放，play 时 <strong>muted = true</strong></li>
+            <li>🔊 <strong>10 秒后</strong> 自动 <strong>muted = false</strong>（恢复声音）</li>
         </ol>
         <p style="margin-bottom:0"><strong>URL:</strong> <code>https://localhost/audio_file_p2p.html</code></p>
     </div>
@@ -104,15 +104,15 @@
     </div>
 
     <div class="card">
-        <div class="section-title">接收端：<audio> 标签播放 + 音量时间线</div>
+        <div class="section-title">接收端：<audio> 标签播放 + 静音时间线</div>
         <div class="audio-container" id="audioContainer">
-            <div id="audioPlaceholder" style="color:#999;">（播放会显示在这里）</div>
+            <!-- <audio> 标签由 JS 用 document.createElement 创建；srcObject 先设为空 MediaStream，收到流后再替换 -->
         </div>
 
         <div style="display:flex; justify-content:space-between; font-size:12px; color:#666;">
-            <span>🔇 volume = <strong id="vol0Label">0</strong></span>
+            <span>🔇 播放时 <strong>muted</strong></span>
             <span id="countdown">— 倒计时 —</span>
-            <span>🔊 volume = <strong id="vol1Label">1</strong></span>
+            <span>🔊 10s 后 <strong>unmute</strong></span>
         </div>
         <div class="volume-bar"><div class="volume-fill" id="volumeFill"></div></div>
     </div>
