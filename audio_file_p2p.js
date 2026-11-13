@@ -34,6 +34,8 @@ const countdownEl = document.getElementById('countdown');
 const volumeFill = document.getElementById('volumeFill');
 const logContainer = document.getElementById('logContainer');
 const audioContainer = document.getElementById('audioContainer');
+const playBtn = document.getElementById('playBtn');
+const playBtnHint = document.getElementById('playBtnHint');
 
 // Global State
 let pc1 = null;          // 发送端
@@ -43,6 +45,7 @@ let bufferSource = null;
 let volumeTimer = null;
 let countdownTimer = null;
 let volumeRestoreAt = null;
+let diagTimer = null;
 let running = false;
 
 // ---- Logging（只用 textContent，避免注入）----------------------------------
@@ -142,6 +145,29 @@ function startCountdown(endTime) {
   }, 100);
 }
 
+// ---- 尝试播放（自动 / 手动共用）---------------------------------------------
+function attemptPlay() {
+  audio.muted = true;
+  updateMuteUI(true);
+  log('🎬 调用 audio.play() …', 'info');
+  const playPromise = audio.play();
+  if (!playPromise || typeof playPromise.then !== 'function') {
+    log('⚠️ play() 未返回 Promise（旧实现），无法确认结果', 'warning');
+    return;
+  }
+  // 加 3s 超时：iOS 上 play() 若一直 pending 说明被策略卡住，改用手动按钮
+  Promise.race([
+    playPromise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error('play state timeout 3000ms')), 3000))
+  ]).then(() => {
+    log('✅ audio.play() resolve —— 播放已启动', 'success');
+    dumpAudioState('after-play-resolve');
+  }).catch((err) => {
+    log('❌ audio.play() reject/pending: name=' + err.name + ' message=' + err.message, 'error');
+    dumpAudioState('after-play-reject');
+  });
+}
+
 // ---- 接收端：<audio> 标签播放 + muted → unmute -------------------------------
 function handleRemoteStream(remoteStream) {
   log('📥 接收端收到音频流，用 <audio> 标签播放', 'success');
@@ -184,22 +210,24 @@ function handleRemoteStream(remoteStream) {
   audio.muted = true;
   updateMuteUI(true);
 
-  log('🎬 调用 audio.play() …', 'info');
-  const playPromise = audio.play();
-  if (playPromise && typeof playPromise.then === 'function') {
-    playPromise.then(() => {
-      log('✅ audio.play() resolve —— 播放已启动', 'success');
-      dumpAudioState('after-play-resolve');
-    }).catch((err) => {
-      log('❌ audio.play() reject: name=' + err.name + ' message=' + err.message +
-          ' code=' + (err.code !== undefined ? err.code : 'n/a'), 'error');
-      dumpAudioState('after-play-reject');
-    });
-  } else {
-    log('⚠️ play() 未返回 Promise（旧实现），无法确认结果', 'warning');
-  }
+  // iOS 上自动 play 通常会被拦截：启用“手动开始播放”按钮（真实手势，100% 有效）
+  playBtn.disabled = false;
+  playBtnHint.textContent = '✅ 已收到流，请点击开始播放';
+  playBtn.onclick = () => {
+    log('👆 用户点击手动播放（真实手势）', 'success');
+    attemptPlay();
+  };
 
-  setStatus(mainStatus, '✓ 流已接收并通过 <audio> 标签播放（muted → unmute after 10s）');
+  // 先尝试自动播放（桌面 Chrome 等可直接成功；iOS 一般会被拦）
+  attemptPlay();
+
+  // 诊断心跳：每 2 秒打一次元素状态，即使 play() pending 也能看到真实播放状态
+  if (diagTimer) clearInterval(diagTimer);
+  diagTimer = setInterval(() => {
+    dumpAudioState('diag-heartbeat');
+  }, 2000);
+
+  setStatus(mainStatus, '📥 流已到达！iOS 请点击「🔊 手动开始播放」；桌面端会自动播放');
   dumpAudioState('end-handleRemoteStream');
 }
 
@@ -368,6 +396,7 @@ startBtn.addEventListener('click', start);
 window.addEventListener('beforeunload', () => {
   if (volumeTimer) clearTimeout(volumeTimer);
   if (countdownTimer) clearInterval(countdownTimer);
+  if (diagTimer) clearInterval(diagTimer);
   if (bufferSource) { try { bufferSource.stop(); } catch (e) {} }
   if (pc1) pc1.close();
   if (pc2) pc2.close();

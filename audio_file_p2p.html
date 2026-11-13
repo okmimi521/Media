@@ -83,7 +83,7 @@
             <li>🔇 接收端用 <strong>&lt;audio&gt; 标签</strong> 播放，play 时 <strong>muted = true</strong></li>
             <li>🔊 <strong>10 秒后</strong> 自动 <strong>muted = false</strong>（恢复声音）</li>
         </ol>
-        <p style="margin-bottom:0"><strong>iOS Safari 兼容：</strong>AudioContext 的 resume 与接收端 <audio> 的解锁播放都会在点击手势内先执行，不受 10s 延时影响。</p>
+        <p style="margin-bottom:0"><strong>iOS Safari 兼容：</strong>AudioContext 的 resume 与接收端 <audio> 的解锁播放都会在点击手势内先执行，不受 10s 延时影响；若仍被自动播放策略拦截，收到流后请点击「🔊 手动开始播放」（真实手势，必定可播）。</p>
         <p style="margin-bottom:0"><strong>URL:</strong> <code>https://localhost/audio_file_p2p.html</code></p>
     </div>
 
@@ -117,6 +117,11 @@
             <span>🔊 10s 后 <strong>unmute</strong></span>
         </div>
         <div class="volume-bar"><div class="volume-fill" id="volumeFill"></div></div>
+
+        <div style="margin-top:10px;">
+            <button id="playBtn" class="success" disabled>🔊 手动开始播放（iOS 需点击）</button>
+            <span id="playBtnHint" style="font-size:12px; color:#666;">收到流后才会启用</span>
+        </div>
     </div>
 
     <div class="card">
