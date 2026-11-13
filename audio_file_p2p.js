@@ -67,6 +67,28 @@ function setConnStatus(el, state) {
      state === 'connecting' ? 'connecting' : 'disconnected');
 }
 
+// ---- 诊断：打印 audio 元素 + 当前 srcObject/track 状态 ----------------------
+function dumpAudioState(tag) {
+  try {
+    let srcDesc = 'null';
+    if (audio && audio.srcObject) {
+      const ts = audio.srcObject.getAudioTracks();
+      srcDesc = audio.srcObject.id + '[' +
+        ts.map((t) => t.id.slice(0, 8) + '/ready:' + t.readyState +
+                '/muted:' + t.muted + '/enabled:' + t.enabled).join(' ') + ']';
+    } else if (audio && !audio.srcObject) {
+      srcDesc = 'null(未设置)';
+    }
+    log('[audioState:' + tag + '] paused=' + audio.paused +
+        ' muted=' + audio.muted + ' volume=' + audio.volume +
+        ' readyState=' + audio.readyState +
+        ' currentTime=' + audio.currentTime.toFixed(3) +
+        ' srcObject=' + srcDesc, 'info');
+  } catch (err) {
+    log('[audioState:' + tag + '] 读取失败: ' + err.message, 'error');
+  }
+}
+
 // ---- 发送端：加载文件 → 解码 → MediaStreamDestination → track ----------------
 function loadAudioFile(filePath) {
   return new Promise(async (resolve, reject) => {
@@ -124,15 +146,28 @@ function startCountdown(endTime) {
 function handleRemoteStream(remoteStream) {
   log('📥 接收端收到音频流，用 <audio> 标签播放', 'success');
 
+  // 打印收到的 stream/track 状态
+  const remoteTracks = remoteStream.getAudioTracks();
+  log('  收到 stream: ' + remoteStream.id + '，audioTrack: ' + remoteTracks.length + ' 条', 'info');
+  remoteTracks.forEach((t) => {
+    log('  ▶ track id=' + t.id + ' readyState=' + t.readyState +
+        ' muted=' + t.muted + ' enabled=' + t.enabled, 'info');
+    t.addEventListener('mute', () => log('track 被 mute: ' + t.id, 'warning'));
+    t.addEventListener('unmute', () => log('track 恢复 unmute: ' + t.id, 'success'));
+    t.addEventListener('ended', () => log('track ended: ' + t.id, 'warning'));
+  });
+
   // 收到流后再设置 srcObject（audio 标签由 JS 用 createElement 提前创建好）
+  log('设置 audio.srcObject = remoteStream …', 'info');
   audio.srcObject = remoteStream;
+  dumpAudioState('set-srcObject');
 
   if (volumeTimer) clearTimeout(volumeTimer);
   if (countdownTimer) clearInterval(countdownTimer);
 
   // 每次 play 都重新执行：静音播放 → 10s 后取消静音
   audio.onplay = () => {
-    log('▶️ play 事件 —— 设为 muted（静音播放）', 'warning');
+    log('▶️ 触发 onplay（元素确实开始播放）—— 设为 muted（静音播放）', 'warning');
     volumeRestoreAt = Date.now() + UNMUTE_DELAY_MS;
     audio.muted = true;
     updateMuteUI(true);
@@ -149,11 +184,23 @@ function handleRemoteStream(remoteStream) {
   audio.muted = true;
   updateMuteUI(true);
 
-  audio.play().catch((err) => {
-    log('⚠️ 自动播放被浏览器拦截 (' + err.name + ')，请点击播放按钮', 'warning');
-  });
+  log('🎬 调用 audio.play() …', 'info');
+  const playPromise = audio.play();
+  if (playPromise && typeof playPromise.then === 'function') {
+    playPromise.then(() => {
+      log('✅ audio.play() resolve —— 播放已启动', 'success');
+      dumpAudioState('after-play-resolve');
+    }).catch((err) => {
+      log('❌ audio.play() reject: name=' + err.name + ' message=' + err.message +
+          ' code=' + (err.code !== undefined ? err.code : 'n/a'), 'error');
+      dumpAudioState('after-play-reject');
+    });
+  } else {
+    log('⚠️ play() 未返回 Promise（旧实现），无法确认结果', 'warning');
+  }
 
   setStatus(mainStatus, '✓ 流已接收并通过 <audio> 标签播放（muted → unmute after 10s）');
+  dumpAudioState('end-handleRemoteStream');
 }
 
 // ---- 主流程：页面内两条 RTCPeerConnection 直连 ------------------------------
@@ -191,16 +238,31 @@ async function start() {
     //    这里先用空 MediaStream 静音预播放一次。
     audio.muted = true;
     try {
-      await audio.play();
+      log('🔓 尝试手势内空流预播（解锁）…', 'info');
+      dumpAudioState('unlock-before');
+      // iOS 上空流的 play() 可能永远 pending（不 resolve 也不 reject），
+      // 加 2s 超时防止卡死主流程。
+      const unlockP = Promise.race([
+        audio.play(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('play timeout 2000ms')), 2000))
+      ]);
+      await unlockP;
+      dumpAudioState('unlock-after');
       log('✓ 接收端 <audio> 已在手势内解锁（空流预播成功）', 'success');
     } catch (err) {
-      log('⚠️ 空流预播未通过（' + err.name + '），iOS 上收到流后可能无法自动播放', 'warning');
+      dumpAudioState('unlock-failed');
+      log('⚠️ 空流预播未通过/超时（' + err.name + ': ' + err.message +
+          '），iOS 上收到流后可能无法自动播放', 'warning');
     }
 
     // 2) 加载音频文件 → MediaStream
     setStatus(mainStatus, '正在加载音频文件: ' + fileName + ' …');
     const { stream, source } = await loadAudioFile(fileName);
     bufferSource = source;
+    const sendTrack = stream.getAudioTracks()[0];
+    log('📤 发送端 track: id=' + sendTrack.id + ' readyState=' + sendTrack.readyState +
+        ' muted=' + sendTrack.muted + ' enabled=' + sendTrack.enabled +
+        ' | audioContext.state=' + (audioContext ? audioContext.state : '?'), 'info');
 
     // 3) 延时 10s 后再发送流到对端（带倒计时提示）
     log('⏳ 延时 ' + (SEND_DELAY_MS / 1000) + 's 后才发送流到对端…', 'warning');
@@ -284,6 +346,21 @@ const audio = document.createElement('audio');
 audio.srcObject = new MediaStream();
 audioContainer.appendChild(audio);
 log('📻 已用 createElement 创建 <audio> 标签，srcObject = new MediaStream()（空流），未设置其他属性', 'info');
+
+// ---- 诊断：监听 audio 元素的全部关键事件 -----------------------------------
+[
+  'loadstart', 'loadedmetadata', 'loadeddata', 'canplay', 'canplaythrough',
+  'playing', 'pause', 'waiting', 'stalled', 'suspend', 'emptied', 'ended', 'abort'
+].forEach((evtName) => {
+  audio.addEventListener(evtName, () => {
+    log('🎧 [audio] ' + evtName +
+        ' (paused=' + audio.paused + ' currentTime=' + audio.currentTime.toFixed(3) + ')', 'info');
+  });
+});
+audio.addEventListener('error', () => {
+  log('❌ [audio] error 事件: code=' + (audio.error ? audio.error.code : '?') +
+      ' msg=' + (audio.error ? audio.error.message : '?'), 'error');
+});
 
 startBtn.addEventListener('click', start);
 
