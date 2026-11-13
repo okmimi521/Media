@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Single-Page P2P Audio File → &lt;audio&gt; (volume 0 → 1)</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            padding: 20px;
+            max-width: 900px;
+            margin: 0 auto;
+            background: #f5f5f5;
+        }
+        h1 { color: #333; border-bottom: 3px solid #007aff; padding-bottom: 10px; }
+        .info-box {
+            background: #fff3cd; border: 2px solid #ffc107; padding: 15px;
+            border-radius: 8px; margin-bottom: 20px;
+        }
+        .card {
+            background: white; padding: 20px; border-radius: 8px;
+            margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .section-title { font-size: 18px; font-weight: bold; color: #007aff; margin: 15px 0 10px 0; }
+        button {
+            padding: 12px 24px; font-size: 14px; cursor: pointer; background: #007aff;
+            color: white; border: none; border-radius: 6px; font-weight: 500;
+            margin: 5px 5px 5px 0; transition: background 0.2s;
+        }
+        button:hover:not(:disabled) { background: #0051d5; }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+        button.success { background: #34c759; }
+        select {
+            padding: 10px; font-size: 14px; min-width: 320px;
+            border: 1px solid #ccc; border-radius: 6px; margin: 5px 0;
+        }
+        .status {
+            padding: 12px; background: #e3f2fd; border-left: 4px solid #007aff;
+            border-radius: 4px; margin: 15px 0; min-height: 20px;
+        }
+        .connection-status {
+            display: inline-block; padding: 6px 16px; border-radius: 16px;
+            font-size: 13px; font-weight: 600; margin-left: 10px;
+        }
+        .connection-status.connected { background: #d4edda; color: #155724; }
+        .connection-status.connecting { background: #fff3cd; color: #856404; }
+        .connection-status.disconnected { background: #f8d7da; color: #721c24; }
+        .audio-container {
+            padding: 15px; background: #f8f8f8; border-radius: 6px;
+            margin: 10px 0; min-height: 60px;
+        }
+        .volume-bar {
+            height: 22px; width: 100%; background: #eee; border-radius: 11px;
+            margin: 10px 0; overflow: hidden; position: relative;
+        }
+        .volume-fill {
+            height: 100%; width: 0%; background: linear-gradient(90deg, #34c759, #00d68f);
+            transition: width 0.3s; border-radius: 11px;
+        }
+        .log-container {
+            background: #1e1e1e; padding: 15px; border-radius: 8px;
+            max-height: 300px; overflow-y: auto;
+            font-family: 'Courier New', monospace; font-size: 11px;
+        }
+        .log-entry { padding: 3px 0; color: #d4d4d4; }
+        .log-entry.success { color: #4ec9b0; }
+        .log-entry.error { color: #f48771; }
+        .log-entry.warning { color: #dcdcaa; }
+        .log-entry.info { color: #569cd6; }
+    </style>
+</head>
+<body>
+    <h1>📻 单页面 P2P 音频文件 → &lt;audio&gt; 标签 demo</h1>
+
+    <div class="info-box">
+        <h3>🎚️ 场景（全部在本页面内完成，无需双 tab / 无需服务器信令）：</h3>
+        <ol style="margin:0; padding-left:20px;">
+            <li>📤 页面内创建 <strong>发送端 pc1</strong>：加载音频文件 → 解码 → 生成 MediaStream → <code>addTrack</code></li>
+            <li>📥 同时创建 <strong>接收端 pc2</strong>：<code>ontrack</code> 收到轨道</li>
+            <li>📶 pc1 ↔ pc2 本地直连（offer/answer/ICE 全部在页面内回调，走本机 loopback）</li>
+            <li>🔇 接收端用 <strong>&lt;audio&gt; 标签</strong> 播放，play 时 <strong>volume = 0</strong></li>
+            <li>🔊 <strong>10 秒后</strong> 自动 <strong>volume = 1</strong></li>
+        </ol>
+        <p style="margin-bottom:0"><strong>URL:</strong> <code>https://localhost/audio_file_p2p.html</code></p>
+    </div>
+
+    <div class="card">
+        <div class="section-title">Step 1: 选择音频文件</div>
+        <select id="fileSelect"></select>
+
+        <div class="section-title">Step 2: 开始</div>
+        <button id="startBtn" class="success">🚀 加载并发送（走 WebRTC）</button>
+        <span id="fileInfo" style="font-size:13px; color:#666;"></span>
+
+        <div class="section-title">P2P 状态</div>
+        <div>
+            pc1 (发送端): <span id="pc1Status" class="connection-status disconnected">new</span>
+        </div>
+        <div style="margin-top:6px;">
+            pc2 (接收端): <span id="pc2Status" class="connection-status disconnected">new</span>
+        </div>
+        <div class="status" id="mainStatus">就绪 —— 点击上方按钮开始</div>
+    </div>
+
+    <div class="card">
+        <div class="section-title">接收端：<audio> 标签播放 + 音量时间线</div>
+        <div class="audio-container" id="audioContainer">
+            <div id="audioPlaceholder" style="color:#999;">（播放会显示在这里）</div>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; font-size:12px; color:#666;">
+            <span>🔇 volume = <strong id="vol0Label">0</strong></span>
+            <span id="countdown">— 倒计时 —</span>
+            <span>🔊 volume = <strong id="vol1Label">1</strong></span>
+        </div>
+        <div class="volume-bar"><div class="volume-fill" id="volumeFill"></div></div>
+    </div>
+
+    <div class="card">
+        <div class="section-title">📝 Debug Log</div>
+        <div class="log-container" id="logContainer"></div>
+    </div>
+
+    <script src="audio_file_p2p.js"></script>
+</body>
+</html>

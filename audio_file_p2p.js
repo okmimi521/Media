@@ -1,0 +1,261 @@
+'use strict';
+
+// ---------------------------------------------------------------------------
+// 单页面 demo：把音频文件通过 WebRTC RTCPeerConnection 传输，用 <audio> 标签
+// 播放，play 时音量设为 0，10 秒后自动恢复为 1。
+//
+// 关键点：发送端 pc1 与接收端 pc2 都在本页面里，offer/answer/ICE candidate
+// 全部通过页面内的回调直接交换，不需要任何信令服务器，也不需要双 tab。
+// ---------------------------------------------------------------------------
+
+const AUDIO_FILES = [
+  'P501_C_english_f2_SWB_48k.wav',
+  'test1.mp3',
+  'test2.mp3',
+  'test3.mp3',
+  'test4.wav',
+  'stereo_demo.mp3',
+  'test_stereo1.wav',
+  'hello_google.wav',
+  'zoom-audio-share.wav'
+];
+
+const VOLUME_RESTORE_DELAY_MS = 10000; // 10 秒后恢复音量
+
+// DOM Elements
+const fileSelect = document.getElementById('fileSelect');
+const startBtn = document.getElementById('startBtn');
+const fileInfo = document.getElementById('fileInfo');
+const pc1Status = document.getElementById('pc1Status');
+const pc2Status = document.getElementById('pc2Status');
+const mainStatus = document.getElementById('mainStatus');
+const audioContainer = document.getElementById('audioContainer');
+const countdownEl = document.getElementById('countdown');
+const volumeFill = document.getElementById('volumeFill');
+const logContainer = document.getElementById('logContainer');
+
+// Global State
+let pc1 = null;          // 发送端
+let pc2 = null;          // 接收端
+let audioContext = null;
+let audioElement = null;
+let bufferSource = null;
+let volumeTimer = null;
+let countdownTimer = null;
+let volumeRestoreAt = null;
+let running = false;
+
+// ---- Logging（只用 textContent，避免注入）----------------------------------
+function log(message, type = 'info') {
+  const timestamp = new Date().toLocaleTimeString();
+  const entry = document.createElement('div');
+  entry.className = 'log-entry ' + type;
+  entry.textContent = '[' + timestamp + '] ' + message;
+  logContainer.appendChild(entry);
+  logContainer.scrollTop = logContainer.scrollHeight;
+  console.log('[' + type + '] ' + message);
+}
+
+function setStatus(el, text) {
+  el.textContent = text;
+}
+
+function setConnStatus(el, state) {
+  el.textContent = state;
+  el.className = 'connection-status ' +
+    (state === 'connected' ? 'connected' :
+     state === 'connecting' ? 'connecting' : 'disconnected');
+}
+
+// ---- 发送端：加载文件 → 解码 → MediaStreamDestination → track ----------------
+function loadAudioFile(filePath) {
+  return new Promise(async (resolve, reject) => {
+    try {
+      if (!audioContext) {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        log('AudioContext created: ' + audioContext.sampleRate + 'Hz', 'success');
+      }
+      if (audioContext.state === 'suspended') await audioContext.resume();
+
+      const response = await fetch(filePath);
+      if (!response.ok) throw new Error('Failed to load ' + filePath);
+      const arrayBuffer = await response.arrayBuffer();
+      const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+
+      log('✓ 解码成功: ' + audioBuffer.duration.toFixed(2) + 's, ' +
+          audioBuffer.numberOfChannels + 'ch', 'success');
+
+      const source = audioContext.createBufferSource();
+      source.buffer = audioBuffer;
+      source.loop = true; // 便于反复观察 0 → 1 的切换
+      const destination = audioContext.createMediaStreamDestination();
+      source.connect(destination);
+      source.start(0);
+
+      resolve({ stream: destination.stream, source });
+    } catch (err) {
+      reject(err);
+    }
+  });
+}
+
+// ---- 音量 UI --------------------------------------------------------------
+function updateVolumeUI(volume) {
+  if (volumeFill) volumeFill.style.width = (volume * 100).toFixed(1) + '%';
+}
+
+function setVolume(el, volume) {
+  el.volume = Math.min(1, Math.max(0, volume));
+  updateVolumeUI(el.volume);
+}
+
+function startCountdown(endTime) {
+  if (countdownTimer) clearInterval(countdownTimer);
+  countdownEl.textContent = '';
+
+  countdownTimer = setInterval(() => {
+    if (!audioElement) { clearInterval(countdownTimer); return; }
+    const remaining = Math.max(0, endTime - Date.now());
+    if (remaining <= 0) {
+      clearInterval(countdownTimer);
+      countdownEl.textContent = '';
+      return;
+    }
+    countdownEl.textContent = '⏳ 将在 ' + (remaining / 1000).toFixed(1) + 's 后恢复音量';
+  }, 100);
+}
+
+// ---- 接收端：<audio> 标签播放 + 音量 0 → 1 ----------------------------------
+function handleRemoteStream(remoteStream) {
+  log('📥 接收端收到音频流，用 <audio> 标签播放', 'success');
+
+  if (!audioElement) {
+    audioElement = document.createElement('audio');
+    audioElement.id = 'remoteAudio';
+    audioElement.controls = true;
+    audioElement.autoplay = true;
+    audioElement.loop = false;
+  }
+  audioElement.srcObject = remoteStream;
+
+  audioContainer.innerHTML = '';
+  audioContainer.appendChild(audioElement);
+
+  if (volumeTimer) clearTimeout(volumeTimer);
+  if (countdownTimer) clearInterval(countdownTimer);
+
+  // 每次 play 都重新执行：音量归零 → 10s 后恢复 1
+  audioElement.onplay = () => {
+    log('▶️ play 事件 —— 音量设为 0', 'warning');
+    volumeRestoreAt = Date.now() + VOLUME_RESTORE_DELAY_MS;
+    // setVolume(audioElement, 0);
+    startCountdown(volumeRestoreAt);
+
+    volumeTimer = setTimeout(() => {
+      log('🔊 ' + (VOLUME_RESTORE_DELAY_MS / 1000) + 's 已到 —— 音量设为 1', 'success');
+      setVolume(audioElement, 1);
+    }, VOLUME_RESTORE_DELAY_MS);
+  };
+
+  // 流一挂上就先置 0（早于 play 防漏）
+  setVolume(audioElement, 0);
+
+  audioElement.play().catch((err) => {
+    log('⚠️ 自动播放被浏览器拦截 (' + err.name + ')，请点击播放按钮', 'warning');
+  });
+
+  setStatus(mainStatus, '✓ 流已接收并通过 <audio> 标签播放（音量 0 → 1 after 10s）');
+}
+
+// ---- 主流程：页面内两条 RTCPeerConnection 直连 ------------------------------
+async function start() {
+  if (running) return;
+  running = true;
+  startBtn.disabled = true;
+
+  const fileName = fileSelect.value;
+  setStatus(mainStatus, '正在加载音频文件: ' + fileName + ' …');
+  log('=== 开始：' + fileName + ' ===', 'info');
+
+  try {
+    // 1) 加载音频文件 → MediaStream
+    const { stream, source } = await loadAudioFile(fileName);
+    bufferSource = source;
+
+    // 2) 先建接收端 pc2（ontrack）
+    pc2 = new RTCPeerConnection();
+    setConnStatus(pc2Status, 'new');
+    pc2.ontrack = (event) => {
+      if (event.track.kind !== 'audio') return;
+      log('📥 pc2 (接收端) 收到音频 track: ' + event.track.id, 'success');
+      const remoteStream = event.streams[0] || new MediaStream([event.track]);
+      handleRemoteStream(remoteStream);
+    };
+    pc2.onconnectionstatechange = () => {
+      log('pc2 connection state: ' + pc2.connectionState, 'info');
+      setConnStatus(pc2Status, pc2.connectionState);
+    };
+
+    // 3) 再建发送端 pc1，并把 ICE candidate 直接在页面内转发给对方
+    pc1 = new RTCPeerConnection();
+    setConnStatus(pc1Status, 'new');
+    pc1.onicecandidate = (event) => {
+      if (event.candidate) pc2.addIceCandidate(event.candidate).catch((e) =>
+        log('✗ pc2 addIceCandidate: ' + e.message, 'error'));
+    };
+    pc2.onicecandidate = (event) => {
+      if (event.candidate) pc1.addIceCandidate(event.candidate).catch((e) =>
+        log('✗ pc1 addIceCandidate: ' + e.message, 'error'));
+    };
+    pc1.onconnectionstatechange = () => {
+      log('pc1 connection state: ' + pc1.connectionState, 'info');
+      setConnStatus(pc1Status, pc1.connectionState);
+    };
+
+    // 4) 发送端 addTrack
+    const track = stream.getAudioTracks()[0];
+    pc1.addTrack(track, stream);
+    log('✓ pc1 (发送端) addTrack: ' + track.id, 'success');
+
+    // 5) offer/answer 本地直连
+    const offer = await pc1.createOffer();
+    await pc1.setLocalDescription(offer);
+    await pc2.setRemoteDescription(offer);
+    const answer = await pc2.createAnswer();
+    await pc2.setLocalDescription(answer);
+    await pc1.setRemoteDescription(answer);
+    log('📶 offer/answer 已本地交换，正在建立连接…', 'success');
+
+    fileInfo.textContent = '发送中: ' + fileName;
+    setStatus(mainStatus, '✓ 音频已发出（通过本页内 WebRTC 直连），接收端正在播放');
+  } catch (err) {
+    log('✗ 错误: ' + err.message, 'error');
+    setStatus(mainStatus, '✗ 错误: ' + err.message);
+  }
+}
+
+// ---- UI 初始化 -------------------------------------------------------------
+AUDIO_FILES.forEach((file) => {
+  const option = document.createElement('option');
+  option.value = file;
+  option.textContent = file;
+  fileSelect.appendChild(option);
+});
+
+startBtn.addEventListener('click', start);
+
+// ---- 清理 ------------------------------------------------------------------
+window.addEventListener('beforeunload', () => {
+  if (volumeTimer) clearTimeout(volumeTimer);
+  if (countdownTimer) clearInterval(countdownTimer);
+  if (bufferSource) { try { bufferSource.stop(); } catch (e) {} }
+  if (pc1) pc1.close();
+  if (pc2) pc2.close();
+  if (audioContext) audioContext.close();
+  if (audioElement) {
+    audioElement.pause();
+    audioElement.srcObject = null;
+  }
+});
+
+log('页面已加载。选择文件后点击「加载并发送」。', 'info');
