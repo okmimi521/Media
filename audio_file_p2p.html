@@ -83,6 +83,7 @@
             <li>🔇 接收端用 <strong>&lt;audio&gt; 标签</strong> 播放，play 时 <strong>muted = true</strong></li>
             <li>🔊 <strong>10 秒后</strong> 自动 <strong>muted = false</strong>（恢复声音）</li>
         </ol>
+        <p style="margin-bottom:0"><strong>iOS Safari 兼容：</strong>AudioContext 的 resume 与接收端 <audio> 的解锁播放都会在点击手势内先执行，不受 10s 延时影响。</p>
         <p style="margin-bottom:0"><strong>URL:</strong> <code>https://localhost/audio_file_p2p.html</code></p>
     </div>
 

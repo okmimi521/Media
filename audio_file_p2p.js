@@ -163,11 +163,46 @@ async function start() {
   startBtn.disabled = true;
 
   const fileName = fileSelect.value;
-  setStatus(mainStatus, '正在加载音频文件: ' + fileName + ' …');
   log('=== 开始：' + fileName + ' ===', 'info');
 
   try {
-    // 0) 延时 10s 后再发送流到对端（带倒计时提示）
+    // 0) iOS Safari：AudioContext 必须在用户手势内创建并 resume。
+    //    放在最前面（不做任何前置 await），resume 用带超时的方式等待，
+    //    避免因手势过期而在 iOS 上挂起。
+    if (!audioContext) {
+      audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      log('AudioContext created: ' + audioContext.sampleRate + 'Hz', 'success');
+    }
+    if (audioContext.state === 'suspended') {
+      const resumed = Promise.race([
+        audioContext.resume(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('resume timeout')), 3000))
+      ]);
+      try {
+        await resumed;
+        log('✓ AudioContext resumed（在手势窗口内）', 'success');
+      } catch (err) {
+        log('⚠️ AudioContext resume 未完成: ' + err.message, 'warning');
+      }
+    }
+
+    // 1) iOS Safari：接收端 <audio> 元素也要先在手势内 play() 一次解锁，
+    //    否则等延时结束后收到流再 play() 会被自动播放策略拦截。
+    //    这里先用空 MediaStream 静音预播放一次。
+    audio.muted = true;
+    try {
+      await audio.play();
+      log('✓ 接收端 <audio> 已在手势内解锁（空流预播成功）', 'success');
+    } catch (err) {
+      log('⚠️ 空流预播未通过（' + err.name + '），iOS 上收到流后可能无法自动播放', 'warning');
+    }
+
+    // 2) 加载音频文件 → MediaStream
+    setStatus(mainStatus, '正在加载音频文件: ' + fileName + ' …');
+    const { stream, source } = await loadAudioFile(fileName);
+    bufferSource = source;
+
+    // 3) 延时 10s 后再发送流到对端（带倒计时提示）
     log('⏳ 延时 ' + (SEND_DELAY_MS / 1000) + 's 后才发送流到对端…', 'warning');
     const delayEnd = Date.now() + SEND_DELAY_MS;
     await new Promise((resolve) => {
@@ -182,11 +217,7 @@ async function start() {
       }, 100);
     });
 
-    // 1) 加载音频文件 → MediaStream
-    const { stream, source } = await loadAudioFile(fileName);
-    bufferSource = source;
-
-    // 2) 先建接收端 pc2（ontrack）
+    // 4) 先建接收端 pc2（ontrack）
     pc2 = new RTCPeerConnection();
     setConnStatus(pc2Status, 'new');
     pc2.ontrack = (event) => {
@@ -200,7 +231,7 @@ async function start() {
       setConnStatus(pc2Status, pc2.connectionState);
     };
 
-    // 3) 再建发送端 pc1，并把 ICE candidate 直接在页面内转发给对方
+    // 5) 再建发送端 pc1，并把 ICE candidate 直接在页面内转发给对方
     pc1 = new RTCPeerConnection();
     setConnStatus(pc1Status, 'new');
     pc1.onicecandidate = (event) => {
@@ -216,12 +247,12 @@ async function start() {
       setConnStatus(pc1Status, pc1.connectionState);
     };
 
-    // 4) 发送端 addTrack
+    // 6) 发送端 addTrack
     const track = stream.getAudioTracks()[0];
     pc1.addTrack(track, stream);
     log('✓ pc1 (发送端) addTrack: ' + track.id, 'success');
 
-    // 5) offer/answer 本地直连
+    // 7) offer/answer 本地直连
     const offer = await pc1.createOffer();
     await pc1.setLocalDescription(offer);
     await pc2.setRemoteDescription(offer);
