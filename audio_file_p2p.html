@@ -76,6 +76,7 @@
     <div class="info-box">
         <h3>🎚️ 场景（全部在本页面内完成，无需双 tab / 无需服务器信令）：</h3>
         <ol style="margin:0; padding-left:20px;">
+            <li>⏳ 点击开始后<strong>延时 10 秒</strong>，才把流发送到对端</li>
             <li>📤 页面内创建 <strong>发送端 pc1</strong>：加载音频文件 → 解码 → 生成 MediaStream → <code>addTrack</code></li>
             <li>📥 同时创建 <strong>接收端 pc2</strong>：<code>ontrack</code> 收到轨道</li>
             <li>📶 pc1 ↔ pc2 本地直连（offer/answer/ICE 全部在页面内回调，走本机 loopback）</li>

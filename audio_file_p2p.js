@@ -21,6 +21,7 @@ const AUDIO_FILES = [
 ];
 
 const UNMUTE_DELAY_MS = 10000; // 10 秒后 unmute
+const SEND_DELAY_MS = 10000;   // 点击开始后延时 10s 才发送流到对端
 
 // DOM Elements
 const fileSelect = document.getElementById('fileSelect');
@@ -166,6 +167,21 @@ async function start() {
   log('=== 开始：' + fileName + ' ===', 'info');
 
   try {
+    // 0) 延时 10s 后再发送流到对端（带倒计时提示）
+    log('⏳ 延时 ' + (SEND_DELAY_MS / 1000) + 's 后才发送流到对端…', 'warning');
+    const delayEnd = Date.now() + SEND_DELAY_MS;
+    await new Promise((resolve) => {
+      const counter = setInterval(() => {
+        const remaining = Math.max(0, delayEnd - Date.now());
+        if (remaining <= 0) {
+          clearInterval(counter);
+          resolve();
+          return;
+        }
+        setStatus(mainStatus, '⏳ ' + (remaining / 1000).toFixed(1) + 's 后发送流到对端');
+      }, 100);
+    });
+
     // 1) 加载音频文件 → MediaStream
     const { stream, source } = await loadAudioFile(fileName);
     bufferSource = source;
